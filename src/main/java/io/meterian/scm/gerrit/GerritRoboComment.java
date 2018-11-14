@@ -1,5 +1,6 @@
 package io.meterian.scm.gerrit;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,13 +66,19 @@ public class GerritRoboComment {
         }
     }
 
-    public final String filename;
-    public final List<Entry> entries;
+    private final String filename;
+    private final List<Entry> entries;
+    private final URI reportUrl;
    
-    public GerritRoboComment(String file, List<Diff> diffs) {
+    public GerritRoboComment(String file, List<Diff> diffs, URI reportUrl) {
         super();
         this.filename = file;
         this.entries = Collections.unmodifiableList(createEntries(diffs));
+        this.reportUrl = reportUrl;
+    }
+
+    public String filename() {
+        return filename;
     }
 
     @Override
@@ -82,8 +89,6 @@ public class GerritRoboComment {
     private static List<Entry> createEntries(List<Diff> diffs) {
         List<Entry> comments = new ArrayList<>();
         for (Diff diff : diffs) {
-            if (diff.lines.size() > 1)
-                
             comments.add(new Entry(
                 (diff.lines.size() == 1) ? diff.lineNumber : diff.lineNumber-1, 
                 diff.lines, 
@@ -114,7 +119,7 @@ public class GerritRoboComment {
         in.message = "Vulnerable library, please replace with:"+NEWLINE+NEWLINE+entry.replacement();
         in.path = filename;
 
-        in.url = "http://www.meterian.com";
+        in.url = reportUrl.toString();
         in.fixSuggestions = Arrays.asList(suggInfos);
 
         return in;
@@ -135,5 +140,6 @@ public class GerritRoboComment {
         newFixReplacementInfo.range = entry.range();
         return newFixReplacementInfo;
     }
+
 }
 

@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +29,19 @@ import io.meterian.jenkins.io.HttpClientFactory;
 
 public class Meterian {
 
+    public class Result {
+        public int exitCode;
+        public UUID projectUUID;
+        public String projectBranch;
+        public URI reportUrl;
+
+        @Override
+        public String toString() {
+            return "[exitCode=" + exitCode + ", projectUUID=" + projectUUID + ", projectBranch=" + projectBranch + ", reportUrl=" + reportUrl + "]";
+        }
+
+    }
+
     private static final Logger log = LoggerFactory.getLogger(Meterian.class);
 
     private final Configuration config;
@@ -37,85 +51,89 @@ public class Meterian {
     private final Shell shell;
 
     private File clientJar;
-    
-    private UUID projectUUID;
-    private String projectBranch;
-    
-    public static Meterian build(Configuration config, EnvVars environment, PrintStream logger, String args) throws IOException {
+
+    public static Meterian build(Configuration config, EnvVars environment, PrintStream logger, String args)
+            throws IOException {
         Meterian meterian = new Meterian(config, environment, logger, args);
         meterian.init();
         return meterian;
     }
-    
-    private  Meterian(Configuration config, EnvVars environment, PrintStream logger, String args) throws IOException {
+
+    private Meterian(Configuration config, EnvVars environment, PrintStream logger, String args) throws IOException {
         this.config = config;
         this.args = args;
         this.environment = environment;
         this.console = logger;
         this.shell = new Shell();
     }
-  
+
     private void init() throws IOException {
         HttpClient httpClient = new HttpClientFactory().newHttpClient(config);
         clientJar = new ClientDownloader(httpClient, config.getMeterianBaseUrl(), console).load();
     }
-    
-    public int run(String... extraClientArgs) throws IOException {
-        String finalJvmArgs = compose(config.getJvmArgs(), mandatoryJvmArgs());
-        String finalClientArgs = compose(args, extraClientArgs);
-        
-        log.info("url:  {}", config.getUrl());
+
+    public Result run(String... extraClientArgs) throws IOException {
+        List<String> finalJvmArgs = compose(config.getJvmArgs(), mandatoryJvmArgs());
+        List<String> finalClientArgs = compose(args, extraClientArgs);
+
+        log.info("url:  {}", config.getMeterianBaseUrl());
         log.info("jvm:  {}", finalJvmArgs);
         log.info("args: {}", finalClientArgs);
 
-        Task task = shell.exec(commands(finalJvmArgs, finalClientArgs), options());
+        Result result = new Result();
+        Task task = shell.exec(commands(finalJvmArgs, finalClientArgs), options(result));
         task.waitFor();
-        return task.exitValue();
+        result.exitCode = task.exitValue();
+
+        return result;
     }
 
     private String[] mandatoryJvmArgs() {
         return new String[] {
-            "-Dcli.param.folder="+environment.get("WORKSPACE")
+                "-Dcli.param.folder=" + environment.get("WORKSPACE")
         };
     }
 
-    private String compose(String standardArgs, String[] extraArgs) {
-        StringBuilder sb = new StringBuilder();
-        if (standardArgs != null && standardArgs.length() > 0) {
-            sb.append(standardArgs);
-        }
-
-        for (String arg : extraArgs ) {
-            if (sb.length() > 0) {
-                sb.append(' ');
+    private List<String> compose(String standardArgs, String[] extraArgs) {
+        List<String> args = new ArrayList<String>();
+        
+        if (standardArgs != null) {
+            for (String s: standardArgs.split(" ")) {
+                if (!s.trim().isEmpty())
+                    args.add(s);
             }
-            sb.append(arg);
         }
+        
+        if (extraArgs != null) args.addAll(Arrays.asList(extraArgs));
 
-        return sb.toString();
+        return args;
     }
 
-    private String[] commands(String finalJvmArgs, String finalClientArgs) {
+    private String[] commands(List<String> finalJvmArgs, List<String> finalClientArgs) {
         List<String> commands = new ArrayList<>();
         commands.add("java");
-        commands.add(finalJvmArgs);
+        for (String arg: finalJvmArgs)
+            commands.add(arg);
         commands.add("-jar");
         commands.add(clientJar.getAbsolutePath());
-        commands.add(finalClientArgs);
-        
-        log.info("Commands: {}",commands);
+        for (String arg: finalClientArgs)
+            commands.add(arg);
+
+        log.info("Commands: {}", commands);
         return commands.toArray(new String[commands.size()]);
     }
 
-    private Options options() {
+    private Options options(Result result) {
         LineGobbler gobbler = new LineGobbler() {
             int count = 0;
-            
+
             @Override
             public void process(String type, String line) {
+                log.info(line);
+
                 console.print("[meterian] ");
                 console.println(line);
-                if (++count%10 == 0)
+                if (++count % 10 == 0)
                     console.flush();
 
                 try {
@@ -133,22 +151,34 @@ public class Meterian {
                 String[] tokens = line.split(" ");
                 for (String token : tokens) {
                     if (token.startsWith("http")) {
-                        List<NameValuePair> params = URLEncodedUtils.parse(new URI(token), Charset.forName("UTF-8"));
+                        UUID pid = null;
+                        String branch = null;
+                        URI url = new URI(token);
+                        List<NameValuePair> params = URLEncodedUtils.parse(url, Charset.forName("UTF-8"));
                         for (NameValuePair param : params) {
                             if ("branch".equalsIgnoreCase(param.getName())) {
-                                projectBranch = param.getValue();
-                                log.info("Meterian project branch: {}", projectBranch);
+                                branch = param.getValue();
+                                log.debug("Meterian project branch?: {}", branch);
+                            } else if ("pid".equalsIgnoreCase(param.getName())) {
+                                pid = UUID.fromString(param.getValue());
+                                log.debug("Meterian project UUID?: {}", pid);
                             }
-                            else if ("pid".equalsIgnoreCase(param.getName())) {
-                                projectUUID = UUID.fromString(param.getValue());
-                                log.info("Meterian project UUID: {}", projectUUID);
-                            }
+                        }
+
+                        if (branch != null && pid != null) {
+                            result.projectBranch = branch;
+                            result.projectUUID = pid;
+                            result.reportUrl = url;
+                            log.info("Meterian project info: {}", result);
                         }
                     }
                 }
             }
         };
-        
+
+        this.environment.put("METERIAN_API_TOKEN", config.getToken());
+        log.info("Using config token: {}", config.getToken() != null ? "yes" : "no");
+
         return new Options()
                 .withOutputGobbler(gobbler)
                 .withErrorGobbler(gobbler)

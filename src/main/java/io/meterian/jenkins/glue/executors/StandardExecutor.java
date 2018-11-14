@@ -11,7 +11,7 @@ public class StandardExecutor implements MeterianExecutor {
 
     @Override
     public void run(Meterian client) throws Exception {
-        client.run();
+        client.run("--interactive=false");
     }
 
 }

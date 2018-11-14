@@ -120,6 +120,7 @@ public class Gerrit {
 
     private void doApply(List<GerritRoboComment> comments) throws Exception {
         logger.format("[meterian] %d possible insights found for this change %n", comments.size());
+        log.info("Comments: {}", gson.toJson(comments));
 
         ReviewInput input = ReviewInput.dislike();
         input.drafts = ReviewInput.DraftHandling.PUBLISH;
@@ -128,7 +129,7 @@ public class Gerrit {
 
         input.robotComments = new HashMap<>();
         for (GerritRoboComment comment : comments) {
-            input.robotComments.put(comment.filename, comment.asRobotCommentInput());
+            input.robotComments.put(comment.filename(), comment.asRobotCommentInput());
         }
         log.info("Generated comments: {}", gson.toJson(input.robotComments));
 

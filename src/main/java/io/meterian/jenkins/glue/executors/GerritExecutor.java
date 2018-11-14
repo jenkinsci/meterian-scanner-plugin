@@ -19,6 +19,7 @@ import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.core.Meterian.Result;
 import io.meterian.scm.gerrit.Gerrit;
 import io.meterian.scm.gerrit.GerritRoboComment;
 
@@ -48,13 +49,13 @@ public class GerritExecutor implements MeterianExecutor {
         }
         
         logger.println("[meterian] A critical change on a manifest file was detected - running Meterian analysis...");
-        client.run("--autofix:readonly");
+        Result result = client.run("--interactive=false", "--autofix:readonly");
 
         logger.format("[meterian] Checking %d manifest file(s) %n", manifests.size());
-        generateRobotComments(gerrit, manifests);
+        generateRobotComments(gerrit, manifests, result);
     }
 
-    private void generateRobotComments(Gerrit gerrit, List<String> manifests) throws IOException {
+    private void generateRobotComments(Gerrit gerrit, List<String> manifests, Result result) throws IOException {
         List<GerritRoboComment> comments = new ArrayList<>();
 
         File root = new File(environment.get("WORKSPACE"));
@@ -69,7 +70,7 @@ public class GerritExecutor implements MeterianExecutor {
             List<Diff> diffs = fc.compare();
             log.info("Manifest {}, diffs {}", manifest, diffs);
 
-            GerritRoboComment comment = new GerritRoboComment(manifest, diffs);
+            GerritRoboComment comment = new GerritRoboComment(manifest, diffs, result.reportUrl);
             comments.add(comment);
         }
         

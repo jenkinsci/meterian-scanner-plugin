@@ -59,7 +59,7 @@ public class MeterianPlugin extends Builder {
                 listener.getLogger(), 
                 args);
         
-        client.run();
+        client.run("--interactive=false");
         
         return true;
     }
@@ -91,9 +91,16 @@ public class MeterianPlugin extends Builder {
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
             
             save();
-            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\\ntoken: [{}]", url, jvmArgs, token);
+            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]", url, jvmArgs, mask(token));
 
             return super.configure(req, formData);
+        }
+
+        private String mask(String data) {
+            if (data == null)
+                return null;
+            else
+                return data.substring(0, Math.min(4, data.length()/5))+"...";
         }
 
         public String getUrl() {

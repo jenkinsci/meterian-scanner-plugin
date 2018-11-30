@@ -8,6 +8,7 @@ import java.net.URI;
 
 import javax.servlet.ServletException;
 
+import hudson.model.*;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -19,10 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
-import hudson.model.FreeStyleProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
@@ -58,9 +55,12 @@ public class MeterianPlugin extends Builder {
                 build.getEnvironment(listener), 
                 listener.getLogger(), 
                 args);
-        
-        client.run("--interactive=false");
-        
+
+        Meterian.Result result = client.run("--interactive=false");
+        if (result.exitCode != 0) {
+            build.setResult(Result.FAILURE);
+        }
+
         return true;
     }
 

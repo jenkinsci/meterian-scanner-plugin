@@ -73,6 +73,10 @@ public class MeterianPlugin extends Builder {
         private String url;
         private String token;
         private String jvmArgs;
+        
+        public Configuration() {
+            load();
+        }
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {

@@ -25,6 +25,7 @@ public class ClientDownloader {
     public static final String JAR_FILENAME = "meterian-cli.jar";
     public static final File CACHE_FOLDER = new File(System.getProperty("user.home"), ".meterian");
     public static final File JAR_FILE = new File(CACHE_FOLDER, JAR_FILENAME);
+    public static final File ETAG_FILE = new File(CACHE_FOLDER, JAR_FILENAME + ".etag");
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
@@ -39,15 +40,16 @@ public class ClientDownloader {
     }
 
     public File load() throws IOException {
+        CACHE_FOLDER.mkdirs();
+
         URI uri = newURI(url);
 
         boolean found = false;
-        File etagFile = new File(CACHE_FOLDER, JAR_FILENAME + ".etag");
-        log.debug("etagFile: {} (exist={})", etagFile, etagFile.exists());
+        log.debug("etagFile: {} (exist={})", ETAG_FILE, ETAG_FILE.exists());
         log.debug("cachedFile: {} (exist={})", JAR_FILE, JAR_FILE.exists());
-        if (JAR_FILE.exists() && etagFile.exists()) {
+        if (JAR_FILE.exists() && ETAG_FILE.exists()) {
             log.debug("etagFile and cachedFile found");
-            String cachedEtag = readContents(etagFile);
+            String cachedEtag = readContents(ETAG_FILE);
             String currentEtag = getEtag(uri);
             found = currentEtag.equals(cachedEtag);
         }
@@ -55,7 +57,7 @@ public class ClientDownloader {
         if (!found) {
             console.println("[meterian] Downloading the latest meterian client...");
             log.debug("Etag not matching, downloading client from url {}", uri);
-            updateFiles(uri, JAR_FILE, etagFile);
+            updateFiles(uri, JAR_FILE, ETAG_FILE);
         } else {
             log.debug("etag matches, using cached client");
         }

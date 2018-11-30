@@ -7,6 +7,6 @@ The integration that we are building first, also in light that nobody did that b
 
 More to be written here after the plugin is launched :)
 
-# additional information and sources about writing plugins for Jenkins
+#### Additional information and sources about writing plugins for Jenkins
 https://wiki.jenkins.io/display/JENKINS/Plugin+tutorial
 https://wiki.jenkins.io/display/JENKINS/Create+a+new+Plugin+with+a+custom+build+Step

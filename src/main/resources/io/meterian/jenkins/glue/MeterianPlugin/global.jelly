@@ -13,5 +13,9 @@
     <f:validateButton
        title="${%Test Connection}" progress="${%Testing...}"
        method="testConnection" with="url,token" />
+	<f:entry title="GitHub OAUTH token" field="githubToken" description="Enter a valid GitHub OAUTH token associated to your organisation or repository">
+      <f:textbox />
+    </f:entry>
+       
   </f:section>
 </j:jelly>

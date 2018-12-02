@@ -1,31 +1,35 @@
 package io.meterian.jenkins.glue;
 
-import static io.meterian.jenkins.glue.Toilet.getConfiguration;
-import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
-
-import java.io.IOException;
-import java.net.URI;
-
-import javax.servlet.ServletException;
-
-import hudson.model.*;
+import hudson.Extension;
+import hudson.Launcher;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.FreeStyleProject;
+import hudson.model.Result;
+import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.Builder;
+import hudson.util.FormValidation;
+import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.glue.git.LocalGitClient;
+import io.meterian.jenkins.io.HttpClientFactory;
+import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import hudson.Extension;
-import hudson.Launcher;
-import hudson.tasks.BuildStepDescriptor;
-import hudson.tasks.Builder;
-import hudson.util.FormValidation;
-import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.io.HttpClientFactory;
-import net.sf.json.JSONObject;
+import javax.servlet.ServletException;
+import java.io.IOException;
+import java.net.URI;
+
+import static io.meterian.jenkins.glue.Toilet.getConfiguration;
+import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
 
 
 @SuppressWarnings("rawtypes")
@@ -61,7 +65,27 @@ public class MeterianPlugin extends Builder {
             build.setResult(Result.FAILURE);
         }
 
+        try {
+            createGitHubPullRequest();
+        } catch (GitAPIException ex) {
+            log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
+
         return true;
+    }
+
+    private void createGitHubPullRequest() throws GitAPIException, IOException {
+        // TODO: find out the path to the repo being changed
+        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
+        LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
+        localGitClient.execute();
+        createPullRequest();
+    }
+
+    private void createPullRequest() {
+        // TODO: create PR from the forked repo to the target repo
+        System.out.println("Not yet implemented - idea is to run a curl command using a GitHub Token");
     }
 
     @Extension

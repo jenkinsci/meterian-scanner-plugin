@@ -114,11 +114,13 @@ public class MeterianStep extends Step {
             try {
                 if (userHasUsedTheAutofixFlag(client)) {
                     LocalGitClient localGitClient = new LocalGitClient(workspace);
-                    localGitClient.applyCommits();
-                    new LocalGitHubClient().createPullRequest(
-                            localGitClient.getOrgOrUsername(),
-                            localGitClient.getRepositoryName(),
-                            githubToken, localGitClient.getBranchName());
+                    if (localGitClient.applyCommits()) {
+                        new LocalGitHubClient().createPullRequest(
+                                githubToken,
+                                localGitClient.getOrgOrUsername(),
+                                localGitClient.getRepositoryName(),
+                                localGitClient.getBranchName());
+                    }
                 }
             } catch (Exception ex) {
                 log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);

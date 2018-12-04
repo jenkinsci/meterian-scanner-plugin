@@ -5,13 +5,11 @@ import org.kohsuke.github.GitHub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 public class LocalGitHubClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitHubClient.class);
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         new LocalGitHubClient().createPullRequest(
                 System.getenv("GITHUB_TOKEN"),
                 "MeterianHQ",
@@ -19,7 +17,10 @@ public class LocalGitHubClient {
                 "fixed-by-meterian-1617135076");
     }
 
-    public void createPullRequest(String githubToken, String orgOrUserName, String repoName, String branchName) {
+    public void createPullRequest(String githubToken,
+                                  String orgOrUserName,
+                                  String repoName,
+                                  String branchName) {
         log.info(String.format("Creating pull request for org: %s, repo: %s, branch: %s", orgOrUserName, repoName, branchName));
         try {
             GitHub github = GitHub.connectUsingOAuth(githubToken);

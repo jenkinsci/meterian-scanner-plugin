@@ -66,7 +66,7 @@ public class MeterianPlugin extends Builder {
         }
 
         try {
-            createGitHubPullRequest();
+            createGitHubPullRequest(client);
         } catch (GitAPIException ex) {
             log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
             throw new RuntimeException(ex);
@@ -75,12 +75,18 @@ public class MeterianPlugin extends Builder {
         return true;
     }
 
-    private void createGitHubPullRequest() throws GitAPIException, IOException {
-        // TODO: find out the path to the repo being changed
-        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
-        LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
-        localGitClient.execute();
-        createPullRequest();
+    private void createGitHubPullRequest(Meterian client) throws GitAPIException, IOException {
+        if (userHasUsedTheAutofixFlag(client)) {
+            // TODO: find out the path to the repo being changed
+            String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
+            LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
+            localGitClient.execute();
+            createPullRequest();
+        }
+    }
+
+    private boolean userHasUsedTheAutofixFlag(Meterian client) {
+        return client.getFinalClientArgs().contains("--autofix");
     }
 
     private void createPullRequest() {

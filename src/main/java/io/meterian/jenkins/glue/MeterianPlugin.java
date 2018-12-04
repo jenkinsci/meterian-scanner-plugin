@@ -105,6 +105,8 @@ public class MeterianPlugin extends Builder {
         private String token;
         private String jvmArgs;
         
+        private String githubToken;
+        
         public Configuration() {
             load();
         }
@@ -124,9 +126,10 @@ public class MeterianPlugin extends Builder {
             url = computeFinalUrl(formData.getString("url"));
             token = computeFinalToken(formData.getString("token"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
+            githubToken = parseEmpty(formData.getString("githubToken"), "");
             
             save();
-            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]", url, jvmArgs, mask(token));
+            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]", url, jvmArgs, mask(token), mask(githubToken));
 
             return super.configure(req, formData);
         }
@@ -148,6 +151,10 @@ public class MeterianPlugin extends Builder {
 
         public String getToken() {
             return token;
+        }
+
+        public String getGithubToken() {
+            return githubToken;
         }
 
         public String getMeterianBaseUrl() {

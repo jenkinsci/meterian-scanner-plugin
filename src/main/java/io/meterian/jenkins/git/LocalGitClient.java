@@ -12,8 +12,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 public class LocalGitClient {
 
@@ -23,12 +25,28 @@ public class LocalGitClient {
     private String branchName;
 
     public static void main(String[] args) throws IOException, GitAPIException {
-        String pathToRepo = "/home/satyasai/git-repos/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
+        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/TestMeterianPlugin-Freestyle-autofix";
         LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
-        System.out.println(localGitClient.createBranch("fixed-by-meterian-" + addSomeSuffix()));
-        System.out.println(localGitClient.addChangedFileToBranch("pom.xml"));
-        System.out.println(localGitClient.commitChanges("Meterian.com", "Meterian.com", "info@meterian.com", "Fixes applied to pom.xml via meterian"));
-        System.out.println(localGitClient.pushBranchToRemoteRepo());
+        if (localGitClient.hasChanges()) {
+            Set<String> unCommittedFiles = localGitClient.listOfChanges();
+            System.out.println(unCommittedFiles);
+            System.out.println(localGitClient.createBranch("fixed-by-meterian-" + addSomeSuffix()));
+            System.out.println(localGitClient.addChangedFileToBranch(unCommittedFiles));
+            System.out.println(localGitClient.commitChanges("Meterian.com", "Meterian.com", "info@meterian.com", "Fixes applied via meterian"));
+            System.out.println(localGitClient.pushBranchToRemoteRepo());
+        }
+    }
+
+    private Set<String> listOfChanges() throws GitAPIException {
+        return git.status()
+                .call()
+                .getModified();
+    }
+
+    private boolean hasChanges() throws GitAPIException {
+        return ! git.status()
+                .call()
+                .isClean();
     }
 
     public LocalGitClient(String pathToRepo) throws IOException {
@@ -48,21 +66,31 @@ public class LocalGitClient {
         return "";
     }
 
-    public void applyCommits() throws GitAPIException {
-        log.info("Applying commits");
-        branchName = "fixed-by-meterian-" + addSomeSuffix();
-        createBranch(branchName);
+    public boolean applyCommits() throws GitAPIException {
+        if (hasChanges()) {
+            log.info("Applying commits");
 
-        addChangedFileToBranch("pom.xml");
+            branchName = "fixed-by-meterian-" + addSomeSuffix();
+            createBranch(branchName);
 
-        // TODO: need correct info for these fields
-        commitChanges("Meterian.com",
-                "Meterian.com",
-                "info@meterian.com",
-                "Fixes applied to pom.xml via meterian");
+            Set<String> unCommittedFiles = listOfChanges();
+            log.info("Files changed: " + Arrays.toString(unCommittedFiles.toArray()));
+            addChangedFileToBranch(unCommittedFiles);
 
-        log.info("Finished committing changes to branch " + branchName);
-        pushBranchToRemoteRepo();
+            // TODO: need correct info for these fields
+            commitChanges("Meterian.com",
+                    "Meterian.com",
+                    "info@meterian.com",
+                    "Fixes applied via meterian");
+
+            log.info("Finished committing changes to branch " + branchName);
+            pushBranchToRemoteRepo();
+            log.info("Finished creating pull request on remote repo");
+            return true;
+        } else {
+            log.info("No changes found, no commits to apply");
+        }
+        return false;
     }
 
     public String getOrgOrUsername() throws GitAPIException {
@@ -94,13 +122,17 @@ public class LocalGitClient {
         return checkoutRef;
     }
 
-    private DirCache addChangedFileToBranch(String fileName) throws GitAPIException {
-        log.info("Adding file to branch: " + fileName);
-        return git
-                .add()
-                // TODO: find out a better way to find changed files in a branch IF the below isn't the right way, since this is Java / Maven specific, it will do for now
-                .addFilepattern(fileName)
-                .call();
+    private DirCache addChangedFileToBranch(Set<String> fileNames) throws GitAPIException {
+        log.info("Adding files to branch: " + fileNames);
+
+        DirCache result = null;
+        for (String eachFile: fileNames) {
+            result = git.add()
+                    .addFilepattern(eachFile)
+                    .call();
+        }
+
+        return result;
     }
 
     private RevCommit commitChanges(String authorName,

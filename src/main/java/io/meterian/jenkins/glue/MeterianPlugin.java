@@ -13,6 +13,7 @@ import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.git.LocalGitClient;
+import io.meterian.jenkins.glue.github.LocalGitHubClient;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
@@ -56,10 +57,11 @@ public class MeterianPlugin extends Builder {
             throws IOException, InterruptedException {
 
         EnvVars environment = build.getEnvironment(listener);
+        Configuration configuration = getConfiguration();
         Meterian client = Meterian.build(
-                getConfiguration(),
+                configuration,
                 environment,
-                listener.getLogger(), 
+                listener.getLogger(),
                 args);
 
         Meterian.Result result = client.run("--interactive=false");
@@ -69,7 +71,7 @@ public class MeterianPlugin extends Builder {
 
         try {
             String workspace = environment.get("WORKSPACE");
-            createGitHubPullRequest(client, workspace);
+            applyCommitsAndCreatePullRequest(client, workspace, configuration.githubToken);
         } catch (GitAPIException ex) {
             log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
             throw new RuntimeException(ex);
@@ -78,11 +80,17 @@ public class MeterianPlugin extends Builder {
         return true;
     }
 
-    private void createGitHubPullRequest(Meterian client, String workspace) throws GitAPIException, IOException {
+    private void applyCommitsAndCreatePullRequest(
+            Meterian client,
+            String workspace,
+            String githubToken) throws GitAPIException, IOException {
         if (userHasUsedTheAutofixFlag(client)) {
             LocalGitClient localGitClient = new LocalGitClient(workspace);
-            localGitClient.execute();
-            createPullRequest();
+            localGitClient.applyCommits();
+            new LocalGitHubClient().createPullRequest(
+                    localGitClient.getRepositoryName(),
+                    githubToken,
+                    localGitClient.getBranchName());
         }
     }
 
@@ -90,23 +98,18 @@ public class MeterianPlugin extends Builder {
         return client.getFinalClientArgs().contains("--autofix");
     }
 
-    private void createPullRequest() {
-        // TODO: create PR from the forked repo to the target repo
-        System.out.println("Not yet implemented - idea is to run a curl command using a GitHub Token");
-    }
-
     @Extension
     static public class Configuration extends BuildStepDescriptor<Builder> implements HttpClientFactory.Config {
 
         private static final String DEFAULT_BASE_URL = "https://www.meterian.io";
-        private static final int ONE_MINUTE = 60*1000;
-        
+        private static final int ONE_MINUTE = 60 * 1000;
+
         private String url;
         private String token;
         private String jvmArgs;
-        
+
         private String githubToken;
-        
+
         public Configuration() {
             load();
         }
@@ -127,7 +130,7 @@ public class MeterianPlugin extends Builder {
             token = computeFinalToken(formData.getString("token"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
             githubToken = parseEmpty(formData.getString("githubToken"), "");
-            
+
             save();
             log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]", url, jvmArgs, mask(token), mask(githubToken));
 
@@ -138,7 +141,7 @@ public class MeterianPlugin extends Builder {
             if (data == null)
                 return null;
             else
-                return data.substring(0, Math.min(4, data.length()/5))+"...";
+                return data.substring(0, Math.min(4, data.length() / 5)) + "...";
         }
 
         public String getUrl() {
@@ -164,8 +167,8 @@ public class MeterianPlugin extends Builder {
         public FormValidation doTestConnection(
                 @QueryParameter("url") String testUrl,
                 @QueryParameter("token") String testToken
-            ) throws IOException, ServletException {
-            
+        ) throws IOException, ServletException {
+
             String apiUrl = computeFinalUrl(testUrl);
             String apiToken = computeFinalToken(testToken);
             log.info("The url to verify is [{}], the token is [{}]", apiUrl, apiToken);
@@ -174,11 +177,11 @@ public class MeterianPlugin extends Builder {
                 HttpClient client = new HttpClientFactory().newHttpClient(this);
                 HttpGet request = new HttpGet(new URI(makeUrl(apiUrl, "/api/v1/accounts/me")));
                 if (apiToken != null) {
-                    String auth = "Token "+apiToken;
+                    String auth = "Token " + apiToken;
                     log.info("Using auth [{}]", auth);
                     request.addHeader("Authorization", auth);
                 }
-                
+
                 HttpResponse response = client.execute(request);
                 log.info("{}: {}", apiUrl, response);
                 if (response.getStatusLine().getStatusCode() == 200) {

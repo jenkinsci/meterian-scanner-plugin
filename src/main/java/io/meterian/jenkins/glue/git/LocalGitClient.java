@@ -6,17 +6,20 @@ import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RemoteConfig;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Random;
 
 public class LocalGitClient {
 
     private final Git git;
+    private String branchName;
 
     public static void main(String[] args) throws IOException, GitAPIException {
-        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
+        String pathToRepo = "/home/satyasai/git-repos/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
         LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
         System.out.println(localGitClient.createBranch("fixed-by-meterian-" + addSomeSuffix()));
         System.out.println(localGitClient.addChangedFileToBranch("pom.xml"));
@@ -32,8 +35,18 @@ public class LocalGitClient {
         git.checkout();
     }
 
-    public void execute() throws GitAPIException {
-        createBranch("fixed-by-meterian-" + addSomeSuffix());
+    public String getRepositoryName() throws GitAPIException {
+        List<RemoteConfig> remoteConfigList = git.remoteList().call();
+        if ((remoteConfigList != null) && (remoteConfigList.size() > 0)) {
+            String rawPath = remoteConfigList.get(0).getURIs().get(0).getRawPath();
+            return rawPath.replace(".git", "");
+        }
+        return "";
+    }
+
+    public void applyCommits() throws GitAPIException {
+        Ref branchRef = createBranch("fixed-by-meterian-" + addSomeSuffix());
+        branchName = branchRef.getName();
         addChangedFileToBranch("pom.xml");
 
         // TODO: need correct info for these fields
@@ -41,6 +54,10 @@ public class LocalGitClient {
                 "Meterian.com",
                 "info@meterian.com",
                 "Fixes applied to pom.xml via meterian");
+    }
+
+    public String getBranchName() {
+        return branchName;
     }
 
     private Ref createBranch(String branchName) throws GitAPIException {

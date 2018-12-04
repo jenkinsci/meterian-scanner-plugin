@@ -7,6 +7,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,6 +16,8 @@ import java.util.List;
 import java.util.Random;
 
 public class LocalGitClient {
+
+    static final Logger log = LoggerFactory.getLogger(LocalGitClient.class);
 
     private final Git git;
     private String branchName;
@@ -45,8 +49,10 @@ public class LocalGitClient {
     }
 
     public void applyCommits() throws GitAPIException {
-        Ref branchRef = createBranch("fixed-by-meterian-" + addSomeSuffix());
-        branchName = branchRef.getName();
+        log.info("Applying commits");
+        branchName = "fixed-by-meterian-" + addSomeSuffix();
+        createBranch(branchName);
+
         addChangedFileToBranch("pom.xml");
 
         // TODO: need correct info for these fields
@@ -54,6 +60,18 @@ public class LocalGitClient {
                 "Meterian.com",
                 "info@meterian.com",
                 "Fixes applied to pom.xml via meterian");
+
+        log.info("Finished committing changes to branch " + branchName);
+        pushBranchToRemoteRepo();
+    }
+
+    public String getOrgOrUsername() throws GitAPIException {
+        String[] fullRepoName = getRepositoryName().split("/");
+        if ((fullRepoName != null) && (fullRepoName.length > 0)) {
+            return fullRepoName[0];
+        }
+
+        return "";
     }
 
     public String getBranchName() {
@@ -61,6 +79,7 @@ public class LocalGitClient {
     }
 
     private Ref createBranch(String branchName) throws GitAPIException {
+        log.info("Creating branch");
         Ref branchCreateRef = git.branchCreate()
                 .setName(branchName)
                 .call();
@@ -70,10 +89,13 @@ public class LocalGitClient {
                     .setName(branchName)
                     .call();
         }
+
+        log.info("Created branch " + branchName);
         return checkoutRef;
     }
 
     private DirCache addChangedFileToBranch(String fileName) throws GitAPIException {
+        log.info("Adding file to branch: " + fileName);
         return git
                 .add()
                 // TODO: find out a better way to find changed files in a branch IF the below isn't the right way, since this is Java / Maven specific, it will do for now
@@ -85,6 +107,7 @@ public class LocalGitClient {
                                     String committerName,
                                     String email,
                                     String commitMessage) throws GitAPIException {
+        log.info("Committing changes from author: " + authorName);
         return git
                 .commit()
                 .setAuthor(authorName, email)
@@ -94,6 +117,7 @@ public class LocalGitClient {
     }
 
     private Iterable<PushResult> pushBranchToRemoteRepo() throws GitAPIException {
+        log.info("Pushing changes to branch on remote repo");
         return git.push()
                 .setForce(true)
                 .call();

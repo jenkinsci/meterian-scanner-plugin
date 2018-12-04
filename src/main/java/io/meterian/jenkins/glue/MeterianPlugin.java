@@ -19,7 +19,6 @@ import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -69,13 +68,11 @@ public class MeterianPlugin extends Builder {
             build.setResult(Result.FAILURE);
         }
 
-        try {
-            String workspace = environment.get("WORKSPACE");
-            applyCommitsAndCreatePullRequest(client, workspace, configuration.githubToken);
-        } catch (GitAPIException ex) {
-            log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
-            throw new RuntimeException(ex);
-        }
+        applyCommitsAndCreatePullRequest(
+                client,
+                environment.get("WORKSPACE"),
+                configuration.githubToken
+        );
 
         return true;
     }
@@ -83,14 +80,19 @@ public class MeterianPlugin extends Builder {
     private void applyCommitsAndCreatePullRequest(
             Meterian client,
             String workspace,
-            String githubToken) throws GitAPIException, IOException {
-        if (userHasUsedTheAutofixFlag(client)) {
-            LocalGitClient localGitClient = new LocalGitClient(workspace);
-            localGitClient.applyCommits();
-            new LocalGitHubClient().createPullRequest(
-                    localGitClient.getRepositoryName(),
-                    githubToken,
-                    localGitClient.getBranchName());
+            String githubToken) {
+        try {
+            if (userHasUsedTheAutofixFlag(client)) {
+                LocalGitClient localGitClient = new LocalGitClient(workspace);
+                localGitClient.applyCommits();
+                new LocalGitHubClient().createPullRequest(
+                        localGitClient.getOrgOrUsername(),
+                        localGitClient.getRepositoryName(),
+                        githubToken, localGitClient.getBranchName());
+            }
+        } catch (Exception ex) {
+            log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
+            throw new RuntimeException(ex);
         }
     }
 

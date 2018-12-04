@@ -1,4 +1,4 @@
-package io.meterian.jenkins.glue.git;
+package io.meterian.jenkins.git;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;

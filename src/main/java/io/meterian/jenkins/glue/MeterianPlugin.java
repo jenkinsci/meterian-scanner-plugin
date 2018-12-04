@@ -12,8 +12,8 @@ import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.glue.git.LocalGitClient;
-import io.meterian.jenkins.glue.github.LocalGitHubClient;
+import io.meterian.jenkins.git.LocalGitClient;
+import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
@@ -71,7 +71,7 @@ public class MeterianPlugin extends Builder {
         applyCommitsAndCreatePullRequest(
                 client,
                 environment.get("WORKSPACE"),
-                configuration.githubToken
+                configuration.getGithubToken()
         );
 
         return true;

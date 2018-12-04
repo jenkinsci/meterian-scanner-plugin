@@ -1,4 +1,4 @@
-package io.meterian.jenkins.glue.github;
+package io.meterian.jenkins.github;
 
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;

@@ -1,5 +1,19 @@
 package io.meterian.jenkins.core;
 
+import com.meterian.common.system.LineGobbler;
+import com.meterian.common.system.Shell;
+import com.meterian.common.system.Shell.Options;
+import com.meterian.common.system.Shell.Task;
+import hudson.EnvVars;
+import io.meterian.jenkins.glue.MeterianPlugin.Configuration;
+import io.meterian.jenkins.io.ClientDownloader;
+import io.meterian.jenkins.io.HttpClientFactory;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.utils.URLEncodedUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -11,30 +25,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.utils.URLEncodedUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.meterian.common.system.LineGobbler;
-import com.meterian.common.system.Shell;
-import com.meterian.common.system.Shell.Options;
-import com.meterian.common.system.Shell.Task;
-
-import hudson.EnvVars;
-import io.meterian.jenkins.glue.MeterianPlugin.Configuration;
-import io.meterian.jenkins.io.ClientDownloader;
-import io.meterian.jenkins.io.HttpClientFactory;
-
 public class Meterian {
 
     public class Result {
+
         public int exitCode;
         public UUID projectUUID;
         public String projectBranch;
         public URI reportUrl;
-
         @Override
         public String toString() {
             return "[exitCode=" + exitCode + ", projectUUID=" + projectUUID + ", projectBranch=" + projectBranch + ", reportUrl=" + reportUrl + "]";
@@ -51,6 +49,7 @@ public class Meterian {
     private final Shell shell;
 
     private File clientJar;
+    private List<String> finalClientArgs;
 
     public static Meterian build(Configuration config, EnvVars environment, PrintStream logger, String args)
             throws IOException {
@@ -74,7 +73,7 @@ public class Meterian {
 
     public Result run(String... extraClientArgs) throws IOException {
         List<String> finalJvmArgs = compose(config.getJvmArgs(), mandatoryJvmArgs());
-        List<String> finalClientArgs = compose(args, extraClientArgs);
+        finalClientArgs = compose(args, extraClientArgs);
 
         log.info("url:  {}", config.getMeterianBaseUrl());
         log.info("jvm:  {}", finalJvmArgs);
@@ -86,6 +85,10 @@ public class Meterian {
         result.exitCode = task.exitValue();
 
         return result;
+    }
+
+    public List<String> getFinalClientArgs() {
+        return finalClientArgs;
     }
 
     private String[] mandatoryJvmArgs() {

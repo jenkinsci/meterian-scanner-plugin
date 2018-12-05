@@ -1,6 +1,7 @@
 package io.meterian.jenkins.git;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.lib.Ref;
@@ -16,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class LocalGitClient {
 
@@ -28,12 +30,17 @@ public class LocalGitClient {
         String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/TestMeterianPlugin-Freestyle-autofix";
         LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
         if (localGitClient.hasChanges()) {
-            Set<String> unCommittedFiles = localGitClient.listOfChanges();
-            System.out.println(unCommittedFiles);
-            System.out.println(localGitClient.createBranch("fixed-by-meterian-" + addSomeSuffix()));
-            System.out.println(localGitClient.addChangedFileToBranch(unCommittedFiles));
-            System.out.println(localGitClient.commitChanges("Meterian.com", "Meterian.com", "info@meterian.com", "Fixes applied via meterian"));
-            System.out.println(localGitClient.pushBranchToRemoteRepo());
+            String branchName = "fixed-by-meterian-" + localGitClient.currentBranchSHA();
+            if (localGitClient.localOrRemoteBranchDoesNotExists(branchName)) {
+                System.out.println(localGitClient.createBranch(branchName));
+
+                Set<String> unCommittedFiles = localGitClient.listOfChanges();
+                System.out.println(unCommittedFiles);
+
+                System.out.println(localGitClient.addChangedFileToBranch(unCommittedFiles));
+                System.out.println(localGitClient.commitChanges("Meterian.com", "Meterian.com", "info@meterian.com", "Fixes applied via meterian"));
+                System.out.println(localGitClient.pushBranchToRemoteRepo());
+            }
         }
     }
 
@@ -66,31 +73,60 @@ public class LocalGitClient {
         return "";
     }
 
+    private String currentBranchSHA() throws GitAPIException {
+        List<Ref> refs = git.branchList().call();
+        if (refs.size() > 0) {
+            String sha = refs
+                    .get(0)
+                    .getObjectId()
+                    .getName();
+            return sha.substring(0, 5);
+        }
+        return "NO-SHA-FOUND";
+    }
+
     public boolean applyCommits() throws GitAPIException {
         if (hasChanges()) {
-            log.info("Applying commits");
+            branchName = "fixed-by-meterian-" + currentBranchSHA();
+            if (localOrRemoteBranchDoesNotExists(branchName)) {
+                log.info(branchName + " does not exist in local or remote repos");
 
-            branchName = "fixed-by-meterian-" + addSomeSuffix();
-            createBranch(branchName);
+                createBranch(branchName);
 
-            Set<String> unCommittedFiles = listOfChanges();
-            log.info("Files changed: " + Arrays.toString(unCommittedFiles.toArray()));
-            addChangedFileToBranch(unCommittedFiles);
+                Set<String> unCommittedFiles = listOfChanges();
+                log.info("Files changed: " + Arrays.toString(unCommittedFiles.toArray()));
+                addChangedFileToBranch(unCommittedFiles);
 
-            // TODO: need correct info for these fields
-            commitChanges("Meterian.com",
-                    "Meterian.com",
-                    "info@meterian.com",
-                    "Fixes applied via meterian");
+                // TODO: need correct info for these fields
+                log.info("Applying commits");
+                commitChanges("Meterian.com",
+                        "Meterian.com",
+                        "info@meterian.com",
+                        "Fixes applied via meterian");
 
-            log.info("Finished committing changes to branch " + branchName);
-            pushBranchToRemoteRepo();
-            log.info("Finished creating pull request on remote repo");
+                log.info("Finished committing changes to branch " + branchName);
+                pushBranchToRemoteRepo();
+                log.info("Finished creating pull request on remote repo");
+            } else {
+                log.info(branchName + " does exist in local or remote repos, skipping committing and pull request process");
+            }
+
             return true;
         } else {
             log.info("No changes found, no commits to apply");
         }
         return false;
+    }
+
+    private boolean localOrRemoteBranchDoesNotExists(String branchName) throws GitAPIException {
+        List<Ref> branchRefList = git.branchList()
+                .setListMode(ListBranchCommand.ListMode.ALL)
+                .call();
+        List<Ref> foundBranches = branchRefList
+                .stream()
+                .filter(s -> s.getName().contains(branchName))
+                .collect(Collectors.toList());
+        return foundBranches.size() == 0;
     }
 
     public String getOrgOrUsername() throws GitAPIException {

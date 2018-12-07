@@ -3,9 +3,8 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.TaskListener;
+import io.meterian.jenkins.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.git.LocalGitClient;
-import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.jenkins.glue.executors.GerritExecutor;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
@@ -85,45 +84,35 @@ public class MeterianStep extends Step {
                 executor = new StandardExecutor(getContext());
             }
 
+            client.prepare("--interactive=false");
+            if (executor instanceof StandardExecutor) {
+                if (userHasUsedTheAutofixFlag(client)) {
+                    new PullRequestCreator(
+                            configuration,
+                            environment.get("WORKSPACE"),
+                            client,
+                            executor,
+                            jenkinsLogger
+                    ).execute();
+                } else {
+                    runMeterianClient(executor, client, jenkinsLogger);
+                }
+            } else {
+                runMeterianClient(executor, client, jenkinsLogger);
+            }
+            return null;
+        }
+
+        private void runMeterianClient(
+                MeterianExecutor executor,
+                Meterian client,
+                PrintStream jenkinsLogger) {
             try {
                 executor.run(client);
             } catch (Exception ex) {
                 log.warn("Unexpected", ex);
                 jenkinsLogger.println("Unexpected exception!");
                 ex.printStackTrace(jenkinsLogger);
-            }
-
-            if (executor instanceof StandardExecutor) {
-                applyCommitsAndCreatePullRequest(
-                        client,
-                        environment.get("WORKSPACE"),
-                        configuration.getGithubToken(),
-                        jenkinsLogger
-                );
-            }
-            return null;
-        }
-
-        private void applyCommitsAndCreatePullRequest(
-                Meterian client,
-                String workspace,
-                String githubToken,
-                PrintStream jenkinsLogger) {
-            try {
-                if (userHasUsedTheAutofixFlag(client)) {
-                    LocalGitClient localGitClient = new LocalGitClient(workspace, jenkinsLogger);
-                    if (localGitClient.applyCommitsToLocalRepo()) {
-                        new LocalGitHubClient(
-                                githubToken,
-                                localGitClient.getOrgOrUsername(),
-                                localGitClient.getRepositoryName(),
-                                jenkinsLogger
-                        ).createPullRequest(localGitClient.getBranchName());
-                    }
-                }
-            } catch (Exception ex) {
-                log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
-                throw new RuntimeException(ex);
             }
         }
 

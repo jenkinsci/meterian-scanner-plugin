@@ -9,7 +9,6 @@ import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import io.meterian.jenkins.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.git.LocalGitClient;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
@@ -64,23 +63,26 @@ public class MeterianPlugin extends Builder {
         client.prepare("--interactive=false");
 
         if (userHasUsedTheAutofixFlag(client)) {
-            new PullRequestCreator(
-                    build,
+            Meterian.Result result = new PullRequestCreator(
                     configuration,
                     environment.get("WORKSPACE"),
                     client,
                     jenkinsLogger
             ).execute();
+
+            setBuildResult(build, result);
         } else {
-            runMeterianClient(build, client);
+            Meterian.Result result = client.run();
+            setBuildResult(build, result);
         }
         return true;
     }
 
-    private void runMeterianClient(AbstractBuild build, Meterian client) throws IOException {
-        Meterian.Result result = client.run();
-        if (result.exitCode != 0) {
-            build.setResult(Result.FAILURE);
+    private void setBuildResult(AbstractBuild build, Meterian.Result result) {
+        if (build != null) {
+            if (result.exitCode != 0) {
+                build.setResult(Result.FAILURE);
+            }
         }
     }
 

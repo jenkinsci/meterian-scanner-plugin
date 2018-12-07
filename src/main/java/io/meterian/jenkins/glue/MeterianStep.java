@@ -1,12 +1,15 @@
 package io.meterian.jenkins.glue;
 
-import static io.meterian.jenkins.glue.Toilet.getConfiguration;
-
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.Collections;
-import java.util.Set;
-
+import hudson.EnvVars;
+import hudson.Extension;
+import hudson.model.TaskListener;
+import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.glue.executors.GerritExecutor;
+import io.meterian.jenkins.glue.executors.MeterianExecutor;
+import io.meterian.jenkins.glue.executors.StandardExecutor;
+import io.meterian.jenkins.git.LocalGitClient;
+import io.meterian.jenkins.github.LocalGitHubClient;
+import io.meterian.scm.gerrit.Gerrit;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -16,14 +19,12 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import hudson.EnvVars;
-import hudson.Extension;
-import hudson.model.TaskListener;
-import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.glue.executors.GerritExecutor;
-import io.meterian.jenkins.glue.executors.MeterianExecutor;
-import io.meterian.jenkins.glue.executors.StandardExecutor;
-import io.meterian.scm.gerrit.Gerrit;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.util.Set;
+
+import static io.meterian.jenkins.glue.Toilet.getConfiguration;
 
 public class MeterianStep extends Step {
     
@@ -74,8 +75,9 @@ public class MeterianStep extends Step {
             PrintStream logger = getContext().get(TaskListener.class).getLogger();
             EnvVars environment = getContext().get(EnvVars.class);
 
+            MeterianPlugin.Configuration configuration = getConfiguration();
             Meterian client = Meterian.build(
-                    getConfiguration(),
+                    configuration,
                     environment,
                     logger,
                     args);
@@ -94,8 +96,40 @@ public class MeterianStep extends Step {
                 logger.println("Unxpected exception!");
                 ex.printStackTrace(logger);
             }
-            
+
+            if (executor instanceof StandardExecutor) {
+                applyCommitsAndCreatePullRequest(
+                        client,
+                        environment.get("WORKSPACE"),
+                        configuration.getGithubToken()
+                );
+            }
             return null;
+        }
+
+        private void applyCommitsAndCreatePullRequest(
+                Meterian client,
+                String workspace,
+                String githubToken) {
+            try {
+                if (userHasUsedTheAutofixFlag(client)) {
+                    LocalGitClient localGitClient = new LocalGitClient(workspace);
+                    if (localGitClient.applyCommits()) {
+                        new LocalGitHubClient().createPullRequest(
+                                githubToken,
+                                localGitClient.getOrgOrUsername(),
+                                localGitClient.getRepositoryName(),
+                                localGitClient.getBranchName());
+                    }
+                }
+            } catch (Exception ex) {
+                log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
+                throw new RuntimeException(ex);
+            }
+        }
+
+        private boolean userHasUsedTheAutofixFlag(Meterian client) {
+            return client.getFinalClientArgs().contains("--autofix");
         }
 
         private static final long serialVersionUID = 1L;

@@ -1,14 +1,21 @@
 package io.meterian.jenkins.glue;
 
-import static io.meterian.jenkins.glue.Toilet.getConfiguration;
-import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
-
-import java.io.IOException;
-import java.net.URI;
-
-import javax.servlet.ServletException;
-
-import hudson.model.*;
+import hudson.EnvVars;
+import hudson.Extension;
+import hudson.Launcher;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.FreeStyleProject;
+import hudson.model.Result;
+import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.Builder;
+import hudson.util.FormValidation;
+import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.git.LocalGitClient;
+import io.meterian.jenkins.github.LocalGitHubClient;
+import io.meterian.jenkins.io.HttpClientFactory;
+import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -18,14 +25,12 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import hudson.Extension;
-import hudson.Launcher;
-import hudson.tasks.BuildStepDescriptor;
-import hudson.tasks.Builder;
-import hudson.util.FormValidation;
-import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.io.HttpClientFactory;
-import net.sf.json.JSONObject;
+import javax.servlet.ServletException;
+import java.io.IOException;
+import java.net.URI;
+
+import static io.meterian.jenkins.glue.Toilet.getConfiguration;
+import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
 
 
 @SuppressWarnings("rawtypes")
@@ -50,10 +55,12 @@ public class MeterianPlugin extends Builder {
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener)
             throws IOException, InterruptedException {
 
+        EnvVars environment = build.getEnvironment(listener);
+        Configuration configuration = getConfiguration();
         Meterian client = Meterian.build(
-                getConfiguration(),  
-                build.getEnvironment(listener), 
-                listener.getLogger(), 
+                configuration,
+                environment,
+                listener.getLogger(),
                 args);
 
         Meterian.Result result = client.run("--interactive=false");
@@ -61,21 +68,52 @@ public class MeterianPlugin extends Builder {
             build.setResult(Result.FAILURE);
         }
 
+        applyCommitsAndCreatePullRequest(
+                client,
+                environment.get("WORKSPACE"),
+                configuration.getGithubToken()
+        );
+
         return true;
+    }
+
+    private void applyCommitsAndCreatePullRequest(
+            Meterian client,
+            String workspace,
+            String githubToken) {
+        try {
+            if (userHasUsedTheAutofixFlag(client)) {
+                LocalGitClient localGitClient = new LocalGitClient(workspace);
+                if (localGitClient.applyCommits()) {
+                    new LocalGitHubClient().createPullRequest(
+                            githubToken,
+                            localGitClient.getOrgOrUsername(),
+                            localGitClient.getRepositoryName(),
+                            localGitClient.getBranchName());
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private boolean userHasUsedTheAutofixFlag(Meterian client) {
+        return client.getFinalClientArgs().contains("--autofix");
     }
 
     @Extension
     static public class Configuration extends BuildStepDescriptor<Builder> implements HttpClientFactory.Config {
 
         private static final String DEFAULT_BASE_URL = "https://www.meterian.io";
-        private static final int ONE_MINUTE = 60*1000;
-        
+        private static final int ONE_MINUTE = 60 * 1000;
+
         private String url;
         private String token;
         private String jvmArgs;
-        
+
         private String githubToken;
-        
+
         public Configuration() {
             load();
         }
@@ -96,7 +134,7 @@ public class MeterianPlugin extends Builder {
             token = computeFinalToken(formData.getString("token"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
             githubToken = parseEmpty(formData.getString("githubToken"), "");
-            
+
             save();
             log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]", url, jvmArgs, mask(token), mask(githubToken));
 
@@ -107,7 +145,7 @@ public class MeterianPlugin extends Builder {
             if (data == null)
                 return null;
             else
-                return data.substring(0, Math.min(4, data.length()/5))+"...";
+                return data.substring(0, Math.min(4, data.length() / 5)) + "...";
         }
 
         public String getUrl() {
@@ -133,8 +171,8 @@ public class MeterianPlugin extends Builder {
         public FormValidation doTestConnection(
                 @QueryParameter("url") String testUrl,
                 @QueryParameter("token") String testToken
-            ) throws IOException, ServletException {
-            
+        ) throws IOException, ServletException {
+
             String apiUrl = computeFinalUrl(testUrl);
             String apiToken = computeFinalToken(testToken);
             log.info("The url to verify is [{}], the token is [{}]", apiUrl, apiToken);
@@ -143,11 +181,11 @@ public class MeterianPlugin extends Builder {
                 HttpClient client = new HttpClientFactory().newHttpClient(this);
                 HttpGet request = new HttpGet(new URI(makeUrl(apiUrl, "/api/v1/accounts/me")));
                 if (apiToken != null) {
-                    String auth = "Token "+apiToken;
+                    String auth = "Token " + apiToken;
                     log.info("Using auth [{}]", auth);
                     request.addHeader("Authorization", auth);
                 }
-                
+
                 HttpResponse response = client.execute(request);
                 log.info("{}: {}", apiUrl, response);
                 if (response.getStatusLine().getStatusCode() == 200) {

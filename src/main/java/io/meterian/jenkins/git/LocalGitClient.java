@@ -6,7 +6,6 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,11 +42,7 @@ public class LocalGitClient {
                         "info@meterian.com",
                         "Fixes applied via meterian")
                 );
-                if (localGitClient.remoteBranchDoesNotExists(branchName)) {
-                    System.out.println(localGitClient.pushBranchToRemoteRepo());
-                } else {
-                    log.info(branchName + " does exist in remote repos, skipping committing and pull request process");
-                }
+                localGitClient.pushBranchToRemoteRepo();
             }
         }
     }
@@ -115,25 +109,18 @@ public class LocalGitClient {
 
                 log.info("Finished committing changes to branch " + branchName);
             } else {
-                log.info(branchName + " already exists in the local repo, skipping local branch creation process");
+                log.warn(branchName + " already exists in the local repo, skipping local branch creation process");
             }
 
-            if (remoteBranchDoesNotExists(branchName)) {
-                log.info("Started pushing branch to remote repo");
-                pushBranchToRemoteRepo();
-                log.info("Finished pushing branch to remote repo");
-            } else {
-                log.info(branchName + " already exists in remote repo, skipping remote branch creation process");
-            }
-
+            pushBranchToRemoteRepo();
             return true;
         } else {
-            log.info("No changes found, no commits to push to remote repo");
+            log.warn("No changes found, no branch to push to the remote repo");
         }
         return false;
     }
 
-    private boolean remoteBranchDoesNotExists(String branchName) throws GitAPIException {
+    private boolean remoteBranchDoesNotExists() throws GitAPIException {
         List<Ref> branchRefList = git.branchList()
                 .call();
         List<Ref> foundBranches = branchRefList
@@ -210,10 +197,14 @@ public class LocalGitClient {
                 .call();
     }
 
-    private Iterable<PushResult> pushBranchToRemoteRepo() throws GitAPIException {
-        log.info("Pushing changes to branch on remote repo");
-        return git.push()
-                .setForce(true)
-                .call();
+    private void pushBranchToRemoteRepo() throws GitAPIException {
+        log.info("Checking if " + branchName + " already exists in remote repo");
+        if (remoteBranchDoesNotExists()) {
+            log.info("Branch does not exist in remote repo, started pushing branch");
+            git.push().call();
+            log.info("Finished pushing branch to remote repo");
+        } else {
+            log.warn(branchName + " already exists in remote repo, skipping remote branch creation process");
+        }
     }
 }

@@ -23,6 +23,7 @@ public class LocalGitHubClient {
             "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created";
     private static final String FOUND_PULL_REQUEST_WARNING =
             "[meterian] Warning: Found %d pull request(s) for org: %s, repo: %s, branch: %s";
+    private static final String FINISHED_CREATING_PULL_REQUEST_MESSAGE = "[meterian] Finished creating pull request for org: %s, repo: %s, branch: %s";
 
     private final String orgOrUserName;
     private final String repoName;
@@ -41,7 +42,7 @@ public class LocalGitHubClient {
                 System.getenv("GITHUB_TOKEN"),
                 "MeterianHQ",
                 "MeterianHQ/autofix-sample-maven-upgrade",
-                noOpStream).createPullRequest("fixed-by-meterian-29c4d");
+                noOpStream).createPullRequest("fixed-by-meterian-29c4d2");
     }
 
     public LocalGitHubClient(String gitHubToken,
@@ -76,10 +77,12 @@ public class LocalGitHubClient {
                         .setBase(base)
                         .setBody(body);
                 // See docs at https://developer.github.com/v3/pulls/#create-a-pull-request
+                log.debug(pullRequest.toString());
                 pullRequestService.createPullRequest(repository, pullRequest);
-                log.info(String.format(
-                        "Finished creating pull request for org: %s, repo: %s, branch: %s", orgOrUserName, repoName, branchName
-                ));
+
+                String finishedCreatingPullRequestMessage = String.format(FINISHED_CREATING_PULL_REQUEST_MESSAGE, orgOrUserName, repoName, branchName);
+                log.info(finishedCreatingPullRequestMessage);
+                jenkinsLogger.println(finishedCreatingPullRequestMessage);
             } catch (Exception ex) {
                 log.error("Error occurred while creating pull request due to: " + ex.getMessage(), ex);
                 throw new RuntimeException(ex);

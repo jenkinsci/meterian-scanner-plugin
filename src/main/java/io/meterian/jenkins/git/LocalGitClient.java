@@ -42,22 +42,22 @@ public class LocalGitClient {
 
         LocalGitClient localGitClient = new LocalGitClient(pathToRepo, noOpStream);
         if (localGitClient.hasChanges()) {
-            String branchName = "fixed-by-meterian-" + localGitClient.currentBranchSHA();
-            if (localGitClient.localBranchDoesNotExists(branchName)) {
-                System.out.println(localGitClient.createBranch(branchName));
+            localGitClient.setBranch("fixed-by-meterian-" + localGitClient.currentBranchSHA()) ;
+            if (localGitClient.localBranchDoesNotExists()) {
+                System.out.println(localGitClient.createBranch());
 
                 Set<String> unCommittedFiles = localGitClient.listOfChanges();
                 System.out.println(unCommittedFiles);
 
                 System.out.println(localGitClient.addChangedFileToBranch(unCommittedFiles));
                 System.out.println(localGitClient.commitChanges(
-                        "Meterian.com",
-                        "Meterian.com",
-                        "info@meterian.com",
+                        "meterian-bot",
+                        "meterian-bot",
+                        "bot.github@meterian.io",
                         "Fixes applied via meterian")
                 );
-                localGitClient.pushBranchToRemoteRepo();
             }
+            localGitClient.pushBranchToRemoteRepo();
         }
     }
 
@@ -79,7 +79,6 @@ public class LocalGitClient {
         git = Git.open(
                 new File(pathToRepo)
         );
-        git.checkout();
     }
 
     public String getRepositoryName() throws GitAPIException {
@@ -98,18 +97,18 @@ public class LocalGitClient {
                     .get(0)
                     .getObjectId()
                     .getName();
-            return sha.substring(0, 5);
+            return sha.substring(0, 7); // Extract short SHA from the long 40-chars SHA string
         }
         return "NO-SHA-FOUND";
     }
 
     public boolean applyCommits() throws GitAPIException {
         if (hasChanges()) {
-            branchName = "fixed-by-meterian-" + currentBranchSHA();
-            if (localBranchDoesNotExists(branchName)) {
+            setBranch("fixed-by-meterian-" + currentBranchSHA());
+            if (localBranchDoesNotExists()) {
                 log.info(branchName + " does not exist in local or remote repos");
 
-                createBranch(branchName);
+                createBranch();
 
                 Set<String> unCommittedFiles = listOfChanges();
                 log.info("Files changed: " + Arrays.toString(unCommittedFiles.toArray()));
@@ -117,9 +116,9 @@ public class LocalGitClient {
 
                 // TODO: need correct info for these fields
                 log.info("Applying commits");
-                commitChanges("Meterian.com",
-                        "Meterian.com",
-                        "info@meterian.com",
+                commitChanges("meterian-bot",
+                        "meterian-bot",
+                        "bot.github@meterian.io",
                         "Fixes applied via meterian");
 
                 log.info("Finished committing changes to branch " + branchName);
@@ -138,19 +137,28 @@ public class LocalGitClient {
         return false;
     }
 
+    private void setBranch(String name) {
+        branchName = name;
+    }
+
+    public String getBranchName() {
+        return branchName;
+    }
+
     private boolean remoteBranchDoesNotExists() throws GitAPIException {
         List<Ref> branchRefList = git.branchList()
+                .setListMode(ListBranchCommand.ListMode.ALL)
                 .call();
         List<Ref> foundBranches = branchRefList
                 .stream()
+                .filter(branch -> branch.getName().contains("remotes"))
                 .filter(branch -> branch.getName().contains(branchName))
                 .collect(Collectors.toList());
         return foundBranches.size() == 0;
     }
 
-    private boolean localBranchDoesNotExists(String branchName) throws GitAPIException {
+    private boolean localBranchDoesNotExists() throws GitAPIException {
         List<Ref> branchRefList = git.branchList()
-                .setListMode(ListBranchCommand.ListMode.ALL)
                 .call();
         List<Ref> foundBranches = branchRefList
                 .stream()
@@ -169,11 +177,7 @@ public class LocalGitClient {
         return "";
     }
 
-    public String getBranchName() {
-        return branchName;
-    }
-
-    private Ref createBranch(String branchName) throws GitAPIException {
+    private Ref createBranch() throws GitAPIException {
         log.info("Creating branch");
         Ref branchCreateRef = git.branchCreate()
                 .setName(branchName)
@@ -217,6 +221,7 @@ public class LocalGitClient {
 
     private void pushBranchToRemoteRepo() throws GitAPIException {
         log.info("Checking if " + branchName + " already exists in remote repo");
+        git.fetch();
         if (remoteBranchDoesNotExists()) {
             log.info("Branch does not exist in remote repo, started pushing branch");
             git.push().call();

@@ -3,11 +3,7 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
-import hudson.model.FreeStyleProject;
-import hudson.model.Result;
+import hudson.model.*;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
@@ -27,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.URI;
 
 import static io.meterian.jenkins.glue.Toilet.getConfiguration;
@@ -57,10 +54,11 @@ public class MeterianPlugin extends Builder {
 
         EnvVars environment = build.getEnvironment(listener);
         Configuration configuration = getConfiguration();
+        PrintStream jenkinsLogger = listener.getLogger();
         Meterian client = Meterian.build(
                 configuration,
                 environment,
-                listener.getLogger(),
+                jenkinsLogger,
                 args);
 
         Meterian.Result result = client.run("--interactive=false");

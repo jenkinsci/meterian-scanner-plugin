@@ -72,14 +72,14 @@ public class MeterianStep extends Step {
 
         @Override
         protected Void run() throws Exception {
-            PrintStream logger = getContext().get(TaskListener.class).getLogger();
+            PrintStream jenkinsLogger = getContext().get(TaskListener.class).getLogger();
             EnvVars environment = getContext().get(EnvVars.class);
 
             MeterianPlugin.Configuration configuration = getConfiguration();
             Meterian client = Meterian.build(
                     configuration,
                     environment,
-                    logger,
+                    jenkinsLogger,
                     args);
 
             MeterianExecutor executor;
@@ -93,8 +93,8 @@ public class MeterianStep extends Step {
                 executor.run(client);
             } catch (Exception ex) {
                 log.warn("Unexpected", ex);
-                logger.println("Unxpected exception!");
-                ex.printStackTrace(logger);
+                jenkinsLogger.println("Unxpected exception!");
+                ex.printStackTrace(jenkinsLogger);
             }
 
             if (executor instanceof StandardExecutor) {

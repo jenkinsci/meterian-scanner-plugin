@@ -10,31 +10,47 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class LocalGitHubClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitHubClient.class);
+
+    private static final String PULL_REQUEST_ALREADY_EXISTS_WARNING =
+            "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created";
+    private static final String FOUND_PULL_REQUEST_WARNING =
+            "[meterian] Warning: Found %d pull request(s) for org: %s, repo: %s, branch: %s";
+
     private final String orgOrUserName;
     private final String repoName;
+    private final PrintStream jenkinsLogger;
 
     private GitHubClient github;
     private PullRequestService pullRequestService;
 
     public static void main(String[] args) {
+        PrintStream noOpStream = new PrintStream(new OutputStream() {
+            public void write(int b) {
+                // NO-OP
+            }
+        });
         new LocalGitHubClient(
                 System.getenv("GITHUB_TOKEN"),
                 "MeterianHQ",
-                "MeterianHQ/autofix-sample-maven-upgrade")
-                .createPullRequest("fixed-by-meterian-29c4d");
+                "MeterianHQ/autofix-sample-maven-upgrade",
+                noOpStream).createPullRequest("fixed-by-meterian-29c4d");
     }
 
     public LocalGitHubClient(String gitHubToken,
                              String orgOrUserName,
-                             String repoName) {
+                             String repoName,
+                             PrintStream jenkinsLogger) {
         this.orgOrUserName = orgOrUserName;
         this.repoName = repoName;
+        this.jenkinsLogger = jenkinsLogger;
 
         github = new GitHubClient();
         github.setOAuth2Token(gitHubToken);
@@ -68,15 +84,15 @@ public class LocalGitHubClient {
                 log.error("Error occurred while creating pull request due to: " + ex.getMessage(), ex);
                 throw new RuntimeException(ex);
             }
-        }
-        else {
-            log.warn("Pull request already exists for this branch, no new pull request will be created");
+        } else {
+            log.warn(PULL_REQUEST_ALREADY_EXISTS_WARNING);
+            jenkinsLogger.println(PULL_REQUEST_ALREADY_EXISTS_WARNING);
         }
     }
 
     private boolean pullRequestDoesNotExist(String branchName) {
         log.info(String.format(
-                "Fetching pull request for org: %s, repo: %s, branch: %s", orgOrUserName, repoName, branchName
+                "Fetching pull request(s) for org: %s, repo: %s, branch: %s", orgOrUserName, repoName, branchName
         ));
         try {
             Repository repository = getRepositoryFrom(orgOrUserName, repoName);
@@ -84,10 +100,11 @@ public class LocalGitHubClient {
             List<PullRequest> pullRequestsFound = pullRequestService.getPullRequests(repository, "open");
 
             if (pullRequestsFound.size() > 0) {
-                log.warn(String.format(
-                        "Found %d pull request(s) for org: %s, repo: %s, branch: %s", pullRequestsFound.size(),
-                        orgOrUserName, repoName, branchName
-                ));
+                String foundPullRequestWarning = String.format(
+                        FOUND_PULL_REQUEST_WARNING, pullRequestsFound.size(), orgOrUserName, repoName, branchName
+                );
+                log.warn(foundPullRequestWarning);
+                jenkinsLogger.println(foundPullRequestWarning);
             }
             return pullRequestsFound.size() == 0;
         } catch (Exception ex) {

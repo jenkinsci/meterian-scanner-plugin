@@ -89,7 +89,7 @@ public class MeterianStep extends Step {
                 executor.run(client);
             } catch (Exception ex) {
                 log.warn("Unexpected", ex);
-                jenkinsLogger.println("Unxpected exception!");
+                jenkinsLogger.println("Unexpected exception!");
                 ex.printStackTrace(jenkinsLogger);
             }
 
@@ -97,7 +97,8 @@ public class MeterianStep extends Step {
                 applyCommitsAndCreatePullRequest(
                         client,
                         environment.get("WORKSPACE"),
-                        configuration.getGithubToken()
+                        configuration.getGithubToken(),
+                        jenkinsLogger
                 );
             }
             return null;
@@ -106,15 +107,17 @@ public class MeterianStep extends Step {
         private void applyCommitsAndCreatePullRequest(
                 Meterian client,
                 String workspace,
-                String githubToken) {
+                String githubToken,
+                PrintStream jenkinsLogger) {
             try {
                 if (userHasUsedTheAutofixFlag(client)) {
-                    LocalGitClient localGitClient = new LocalGitClient(workspace);
+                    LocalGitClient localGitClient = new LocalGitClient(workspace, jenkinsLogger);
                     if (localGitClient.applyCommits()) {
                         new LocalGitHubClient(
                                 githubToken,
                                 localGitClient.getOrgOrUsername(),
-                                localGitClient.getRepositoryName()
+                                localGitClient.getRepositoryName(),
+                                jenkinsLogger
                         ).createPullRequest(localGitClient.getBranchName());
                     }
                 }

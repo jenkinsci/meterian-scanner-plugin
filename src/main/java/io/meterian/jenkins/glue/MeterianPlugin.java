@@ -35,6 +35,10 @@ public class MeterianPlugin extends Builder {
 
     static final Logger log = LoggerFactory.getLogger(MeterianPlugin.class);
 
+    private static final String GITHUB_TOKEN_ABSENT_WARNING =
+            "[meterian] Warning: GITHUB_TOKEN has not been set in the config (please check meterian settings in " +
+                    "Manage Jenkins), cannot create pull request";
+
     private final String args;
 
     @DataBoundConstructor
@@ -69,7 +73,8 @@ public class MeterianPlugin extends Builder {
         applyCommitsAndCreatePullRequest(
                 client,
                 environment.get("WORKSPACE"),
-                configuration.getGithubToken()
+                configuration.getGithubToken(),
+                jenkinsLogger
         );
 
         return true;
@@ -78,20 +83,23 @@ public class MeterianPlugin extends Builder {
     private void applyCommitsAndCreatePullRequest(
             Meterian client,
             String workspace,
-            String gitHubToken) {
+            String gitHubToken,
+            PrintStream jenkinsLogger) {
         try {
             if (userHasUsedTheAutofixFlag(client)) {
-                LocalGitClient localGitClient = new LocalGitClient(workspace);
+                LocalGitClient localGitClient = new LocalGitClient(workspace, jenkinsLogger);
                 if (localGitClient.applyCommits()) {
                     if (gitHubToken == null || gitHubToken.isEmpty()) {
-                        log.warn("GITHUB_TOKEN has not been assigned, cannot create pull request");
+                        log.warn(GITHUB_TOKEN_ABSENT_WARNING);
+                        jenkinsLogger.println(GITHUB_TOKEN_ABSENT_WARNING);
                         return;
                     }
 
                     LocalGitHubClient localGitHubClient = new LocalGitHubClient(
                             gitHubToken,
                             localGitClient.getOrgOrUsername(),
-                            localGitClient.getRepositoryName()
+                            localGitClient.getRepositoryName(),
+                            jenkinsLogger
                     );
                     localGitHubClient.createPullRequest(localGitClient.getBranchName());
                 }

@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -21,12 +23,24 @@ public class LocalGitClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitClient.class);
 
+    private static final String NO_CHANGES_FOUND_WARNING = "No changes found, no branch to push to the remote repo";
+    private static final String LOCAL_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the local repo, skipping the local branch creation process";
+    private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process";
+
     private final Git git;
+    private PrintStream jenkinsLogger;
     private String branchName;
 
     public static void main(String[] args) throws IOException, GitAPIException {
         String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/TestMeterianPlugin-Freestyle-autofix";
-        LocalGitClient localGitClient = new LocalGitClient(pathToRepo);
+
+        PrintStream noOpStream = new PrintStream(new OutputStream() {
+            public void write(int b) {
+                // NO-OP
+            }
+        });
+
+        LocalGitClient localGitClient = new LocalGitClient(pathToRepo, noOpStream);
         if (localGitClient.hasChanges()) {
             String branchName = "fixed-by-meterian-" + localGitClient.currentBranchSHA();
             if (localGitClient.localBranchDoesNotExists(branchName)) {
@@ -54,16 +68,17 @@ public class LocalGitClient {
     }
 
     private boolean hasChanges() throws GitAPIException {
-        return ! git.status()
+        return !git.status()
                 .call()
                 .isClean();
     }
 
-    public LocalGitClient(String pathToRepo) throws IOException {
+    public LocalGitClient(String pathToRepo, PrintStream jenkinsLogger) throws IOException {
+        this.jenkinsLogger = jenkinsLogger;
+
         git = Git.open(
                 new File(pathToRepo)
         );
-
         git.checkout();
     }
 
@@ -109,13 +124,16 @@ public class LocalGitClient {
 
                 log.info("Finished committing changes to branch " + branchName);
             } else {
-                log.warn(branchName + " already exists in the local repo, skipping local branch creation process");
+                String branchAlreadyExistsWarning = String.format(LOCAL_BRANCH_ALREADY_EXISTS_WARNING, branchName);
+                log.warn(branchAlreadyExistsWarning);
+                jenkinsLogger.println(branchAlreadyExistsWarning);
             }
 
             pushBranchToRemoteRepo();
             return true;
         } else {
-            log.warn("No changes found, no branch to push to the remote repo");
+            log.warn(NO_CHANGES_FOUND_WARNING);
+            jenkinsLogger.println(NO_CHANGES_FOUND_WARNING);
         }
         return false;
     }
@@ -175,7 +193,7 @@ public class LocalGitClient {
         log.info("Adding files to branch: " + fileNames);
 
         DirCache result = null;
-        for (String eachFile: fileNames) {
+        for (String eachFile : fileNames) {
             result = git.add()
                     .addFilepattern(eachFile)
                     .call();
@@ -204,7 +222,9 @@ public class LocalGitClient {
             git.push().call();
             log.info("Finished pushing branch to remote repo");
         } else {
-            log.warn(branchName + " already exists in remote repo, skipping remote branch creation process");
+            String branchAlreadyExistsWarning = String.format(REMOTE_BRANCH_ALREADY_EXISTS_WARNING, branchName);
+            log.warn(branchAlreadyExistsWarning);
+            jenkinsLogger.println(branchAlreadyExistsWarning);
         }
     }
 }

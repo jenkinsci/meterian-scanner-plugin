@@ -7,9 +7,9 @@ import hudson.model.*;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import io.meterian.jenkins.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.git.LocalGitClient;
-import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
@@ -34,10 +34,6 @@ import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
 public class MeterianPlugin extends Builder {
 
     static final Logger log = LoggerFactory.getLogger(MeterianPlugin.class);
-
-    private static final String GITHUB_TOKEN_ABSENT_WARNING =
-            "[meterian] Warning: GITHUB_TOKEN has not been set in the config (please check meterian settings in " +
-                    "Manage Jenkins), cannot create pull request";
 
     private final String args;
 
@@ -65,48 +61,26 @@ public class MeterianPlugin extends Builder {
                 jenkinsLogger,
                 args);
 
-        Meterian.Result result = client.run("--interactive=false");
-        if (result.exitCode != 0) {
-            build.setResult(Result.FAILURE);
+        client.prepare("--interactive=false");
+
+        if (userHasUsedTheAutofixFlag(client)) {
+            new PullRequestCreator(
+                    build,
+                    configuration,
+                    environment.get("WORKSPACE"),
+                    client,
+                    jenkinsLogger
+            ).execute();
+        } else {
+            runMeterianClient(build, client);
         }
-
-        applyCommitsAndCreatePullRequest(
-                client,
-                environment.get("WORKSPACE"),
-                configuration.getGithubToken(),
-                jenkinsLogger
-        );
-
         return true;
     }
 
-    private void applyCommitsAndCreatePullRequest(
-            Meterian client,
-            String workspace,
-            String gitHubToken,
-            PrintStream jenkinsLogger) {
-        try {
-            if (userHasUsedTheAutofixFlag(client)) {
-                LocalGitClient localGitClient = new LocalGitClient(workspace, jenkinsLogger);
-                if (localGitClient.applyCommits()) {
-                    if (gitHubToken == null || gitHubToken.isEmpty()) {
-                        log.warn(GITHUB_TOKEN_ABSENT_WARNING);
-                        jenkinsLogger.println(GITHUB_TOKEN_ABSENT_WARNING);
-                        return;
-                    }
-
-                    LocalGitHubClient localGitHubClient = new LocalGitHubClient(
-                            gitHubToken,
-                            localGitClient.getOrgOrUsername(),
-                            localGitClient.getRepositoryName(),
-                            jenkinsLogger
-                    );
-                    localGitHubClient.createPullRequest(localGitClient.getBranchName());
-                }
-            }
-        } catch (Exception ex) {
-            log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
-            throw new RuntimeException(ex);
+    private void runMeterianClient(AbstractBuild build, Meterian client) throws IOException {
+        Meterian.Result result = client.run();
+        if (result.exitCode != 0) {
+            build.setResult(Result.FAILURE);
         }
     }
 

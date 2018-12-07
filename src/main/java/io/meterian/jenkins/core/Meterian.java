@@ -20,10 +20,7 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class Meterian {
 
@@ -50,6 +47,7 @@ public class Meterian {
 
     private File clientJar;
     private List<String> finalClientArgs;
+    private List<String> finalJvmArgs;
 
     public static Meterian build(Configuration config, EnvVars environment, PrintStream logger, String args)
             throws IOException {
@@ -71,10 +69,16 @@ public class Meterian {
         clientJar = new ClientDownloader(httpClient, config.getMeterianBaseUrl(), console).load();
     }
 
-    public Result run(String... extraClientArgs) throws IOException {
-        List<String> finalJvmArgs = compose(config.getJvmArgs(), mandatoryJvmArgs());
+    public void prepare(String... extraClientArgs) {
+        finalJvmArgs = compose(config.getJvmArgs(), mandatoryJvmArgs());
         finalClientArgs = compose(args, extraClientArgs);
+    }
 
+    public List<String> getFinalClientArgs() {
+        return finalClientArgs;
+    }
+
+    public Result run() throws IOException {
         log.info("url:  {}", config.getMeterianBaseUrl());
         log.info("jvm:  {}", finalJvmArgs);
         log.info("args: {}", finalClientArgs);
@@ -87,26 +91,22 @@ public class Meterian {
         return result;
     }
 
-    public List<String> getFinalClientArgs() {
-        return finalClientArgs;
-    }
-
     private String[] mandatoryJvmArgs() {
-        return new String[] {
+        return new String[]{
                 "-Dcli.param.folder=" + environment.get("WORKSPACE")
         };
     }
 
     private List<String> compose(String standardArgs, String[] extraArgs) {
         List<String> args = new ArrayList<String>();
-        
+
         if (standardArgs != null) {
-            for (String s: standardArgs.split(" ")) {
+            for (String s : standardArgs.split(" ")) {
                 if (!s.trim().isEmpty())
                     args.add(s);
             }
         }
-        
+
         if (extraArgs != null) args.addAll(Arrays.asList(extraArgs));
 
         return args;
@@ -115,11 +115,11 @@ public class Meterian {
     private String[] commands(List<String> finalJvmArgs, List<String> finalClientArgs) {
         List<String> commands = new ArrayList<>();
         commands.add("java");
-        for (String arg: finalJvmArgs)
+        for (String arg : finalJvmArgs)
             commands.add(arg);
         commands.add("-jar");
         commands.add(clientJar.getAbsolutePath());
-        for (String arg: finalClientArgs)
+        for (String arg : finalClientArgs)
             commands.add(arg);
 
         log.info("Commands: {}", commands);

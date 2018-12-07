@@ -15,7 +15,8 @@ public class StandardExecutor implements MeterianExecutor {
 
     @Override
     public void run(Meterian client) throws Exception {
-        Meterian.Result result = client.run("--interactive=false");
+        client.prepare("--interactive=false");
+        Meterian.Result result = client.run();
 
         if (result.exitCode != 0) {
             context.setResult(Result.FAILURE);

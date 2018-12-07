@@ -112,7 +112,7 @@ public class MeterianStep extends Step {
             try {
                 if (userHasUsedTheAutofixFlag(client)) {
                     LocalGitClient localGitClient = new LocalGitClient(workspace, jenkinsLogger);
-                    if (localGitClient.applyCommits()) {
+                    if (localGitClient.applyCommitsToLocalRepo()) {
                         new LocalGitHubClient(
                                 githubToken,
                                 localGitClient.getOrgOrUsername(),

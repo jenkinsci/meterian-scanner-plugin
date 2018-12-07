@@ -19,6 +19,9 @@ public class LocalGitHubClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitHubClient.class);
 
+    private static final String GITHUB_TOKEN_ABSENT_WARNING =
+            "[meterian] Warning: GITHUB_TOKEN has not been set in the config (please check meterian settings in " +
+                    "Manage Jenkins), cannot create pull request";
     private static final String PULL_REQUEST_ALREADY_EXISTS_WARNING =
             "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created";
     private static final String FOUND_PULL_REQUEST_WARNING =
@@ -42,7 +45,7 @@ public class LocalGitHubClient {
                 System.getenv("GITHUB_TOKEN"),
                 "MeterianHQ",
                 "MeterianHQ/autofix-sample-maven-upgrade",
-                noOpStream).createPullRequest("fixed-by-meterian-29c4d2");
+                noOpStream).createPullRequest("fixed-by-meterian-29c4d26");
     }
 
     public LocalGitHubClient(String gitHubToken,
@@ -52,6 +55,12 @@ public class LocalGitHubClient {
         this.orgOrUserName = orgOrUserName;
         this.repoName = repoName;
         this.jenkinsLogger = jenkinsLogger;
+
+        if (gitHubToken == null || gitHubToken.isEmpty()) {
+            log.warn(GITHUB_TOKEN_ABSENT_WARNING);
+            jenkinsLogger.println(GITHUB_TOKEN_ABSENT_WARNING);
+            return;
+        }
 
         github = new GitHubClient();
         github.setOAuth2Token(gitHubToken);
@@ -77,10 +86,11 @@ public class LocalGitHubClient {
                         .setBase(base)
                         .setBody(body);
                 // See docs at https://developer.github.com/v3/pulls/#create-a-pull-request
-                log.debug(pullRequest.toString());
+                log.info(pullRequest.toString());
                 pullRequestService.createPullRequest(repository, pullRequest);
 
-                String finishedCreatingPullRequestMessage = String.format(FINISHED_CREATING_PULL_REQUEST_MESSAGE, orgOrUserName, repoName, branchName);
+                String finishedCreatingPullRequestMessage =
+                        String.format(FINISHED_CREATING_PULL_REQUEST_MESSAGE, orgOrUserName, repoName, branchName);
                 log.info(finishedCreatingPullRequestMessage);
                 jenkinsLogger.println(finishedCreatingPullRequestMessage);
             } catch (Exception ex) {

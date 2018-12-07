@@ -33,3 +33,6 @@ work
 .project
 .settings
 
+.idea/
+meterian-plugin.iml
+work/*.*

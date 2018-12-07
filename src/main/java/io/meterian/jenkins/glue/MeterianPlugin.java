@@ -78,16 +78,22 @@ public class MeterianPlugin extends Builder {
     private void applyCommitsAndCreatePullRequest(
             Meterian client,
             String workspace,
-            String githubToken) {
+            String gitHubToken) {
         try {
             if (userHasUsedTheAutofixFlag(client)) {
                 LocalGitClient localGitClient = new LocalGitClient(workspace);
                 if (localGitClient.applyCommits()) {
-                    new LocalGitHubClient().createPullRequest(
-                            githubToken,
+                    if (gitHubToken == null || gitHubToken.isEmpty()) {
+                        log.warn("GITHUB_TOKEN has not been assigned, cannot create pull request");
+                        return;
+                    }
+
+                    LocalGitHubClient localGitHubClient = new LocalGitHubClient(
+                            gitHubToken,
                             localGitClient.getOrgOrUsername(),
-                            localGitClient.getRepositoryName(),
-                            localGitClient.getBranchName());
+                            localGitClient.getRepositoryName()
+                    );
+                    localGitHubClient.createPullRequest(localGitClient.getBranchName());
                 }
             }
         } catch (Exception ex) {

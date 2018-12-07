@@ -4,17 +4,13 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.TaskListener;
 import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.git.LocalGitClient;
+import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.jenkins.glue.executors.GerritExecutor;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
-import io.meterian.jenkins.git.LocalGitClient;
-import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.scm.gerrit.Gerrit;
-import org.jenkinsci.plugins.workflow.steps.Step;
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
-import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
+import org.jenkinsci.plugins.workflow.steps.*;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +23,7 @@ import java.util.Set;
 import static io.meterian.jenkins.glue.Toilet.getConfiguration;
 
 public class MeterianStep extends Step {
-    
+
     private static final Logger log = LoggerFactory.getLogger(MeterianStep.class);
 
     private final String args;
@@ -115,11 +111,11 @@ public class MeterianStep extends Step {
                 if (userHasUsedTheAutofixFlag(client)) {
                     LocalGitClient localGitClient = new LocalGitClient(workspace);
                     if (localGitClient.applyCommits()) {
-                        new LocalGitHubClient().createPullRequest(
+                        new LocalGitHubClient(
                                 githubToken,
                                 localGitClient.getOrgOrUsername(),
-                                localGitClient.getRepositoryName(),
-                                localGitClient.getBranchName());
+                                localGitClient.getRepositoryName()
+                        ).createPullRequest(localGitClient.getBranchName());
                     }
                 }
             } catch (Exception ex) {

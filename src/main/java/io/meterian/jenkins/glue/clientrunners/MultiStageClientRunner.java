@@ -16,7 +16,8 @@ public class MultiStageClientRunner implements ClientRunner {
     private StepContext context;
 
     public MultiStageClientRunner(Meterian client,
-                                  StepContext context, PrintStream jenkinsLogger) {
+                                  StepContext context,
+                                  PrintStream jenkinsLogger) {
         this.client = client;
         this.context = context;
         this.jenkinsLogger = jenkinsLogger;

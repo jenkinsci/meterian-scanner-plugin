@@ -1,4 +1,4 @@
-package io.meterian.jenkins;
+package io.meterian.jenkins.glue;
 
 import hudson.model.AbstractBuild;
 import hudson.model.Result;

@@ -1,7 +1,8 @@
-package io.meterian.jenkins;
+package io.meterian.jenkins.autofixfeature;
 
-import io.meterian.jenkins.git.LocalGitClient;
-import io.meterian.jenkins.github.LocalGitHubClient;
+import io.meterian.jenkins.glue.ClientRunner;
+import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
+import io.meterian.jenkins.autofixfeature.github.LocalGitHubClient;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

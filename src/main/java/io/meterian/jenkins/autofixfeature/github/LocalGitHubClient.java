@@ -1,4 +1,4 @@
-package io.meterian.jenkins.github;
+package io.meterian.jenkins.autofixfeature.github;
 
 import org.eclipse.egit.github.core.PullRequest;
 import org.eclipse.egit.github.core.PullRequestMarker;

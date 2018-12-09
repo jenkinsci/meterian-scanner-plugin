@@ -1,4 +1,4 @@
-package io.meterian.jenkins.git;
+package io.meterian.jenkins.autofixfeature.git;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;

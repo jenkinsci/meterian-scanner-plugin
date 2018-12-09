@@ -65,7 +65,8 @@ public class MeterianPlugin extends Builder {
 
         client.prepare("--interactive=false");
 
-        ClientRunner clientRunner = new ClientRunner(build, client, jenkinsLogger);
+        SimpleClientRunner clientRunner =
+                new SimpleClientRunner(build, client, jenkinsLogger);
         if (userHasUsedTheAutofixFlag(client)) {
             new PullRequestCreator(
                     configuration,

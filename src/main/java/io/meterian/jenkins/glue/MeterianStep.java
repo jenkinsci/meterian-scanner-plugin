@@ -90,7 +90,8 @@ public class MeterianStep extends Step {
 
             client.prepare("--interactive=false");
 
-            ClientRunner clientRunner = new ClientRunner(executor, client, jenkinsLogger);
+            MultiStageClientRunner clientRunner =
+                    new MultiStageClientRunner(executor, client, jenkinsLogger);
 
             if (executor instanceof StandardExecutor) {
                 if (userHasUsedTheAutofixFlag(client)) {

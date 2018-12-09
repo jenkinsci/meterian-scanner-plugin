@@ -1,4 +1,4 @@
-package io.meterian.jenkins.glue;
+package io.meterian.jenkins.glue.clientrunners;
 
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
@@ -14,7 +14,7 @@ public class MultiStageClientRunner implements ClientRunner {
     private MeterianExecutor executor;
     private PrintStream jenkinsLogger;
 
-    MultiStageClientRunner(MeterianExecutor executor, Meterian client,
+    public MultiStageClientRunner(MeterianExecutor executor, Meterian client,
                            PrintStream jenkinsLogger) {
         this.client = client;
         this.executor = executor;

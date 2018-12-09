@@ -21,12 +21,13 @@ public class LocalGitHubClient {
 
     private static final String GITHUB_TOKEN_ABSENT_WARNING =
             "[meterian] Warning: GITHUB_TOKEN has not been set in the config (please check meterian settings in " +
-                    "Manage Jenkins), cannot create pull request";
+                    "Manage Jenkins), cannot create pull request.";
     private static final String PULL_REQUEST_ALREADY_EXISTS_WARNING =
-            "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created";
+            "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. " +
+                    "Fixed already generated for current branch (commit point).";
     private static final String FOUND_PULL_REQUEST_WARNING =
             "[meterian] Warning: Found %d pull request(s) for org: %s, repo: %s, branch: %s";
-    private static final String FINISHED_CREATING_PULL_REQUEST_MESSAGE = "[meterian] Finished creating pull request for org: %s, repo: %s, branch: %s";
+    private static final String FINISHED_CREATING_PULL_REQUEST_MESSAGE = "[meterian] Finished creating pull request for org: %s, repo: %s, branch: %s.";
 
     private final String orgOrUserName;
     private final String repoName;

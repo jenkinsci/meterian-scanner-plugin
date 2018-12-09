@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -23,16 +24,18 @@ public class LocalGitClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitClient.class);
 
-    private static final String NO_CHANGES_FOUND_WARNING = "No changes found, no branch to push to the remote repo";
-    private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process";
+    private static final String NO_CHANGES_FOUND_WARNING = "No changes found (no fixed generated), no branch to push to the remote repo.";
+    private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
     private final Git git;
     private PrintStream jenkinsLogger;
-    private String branchName;
+    private String currentBranch;
+    private boolean isMasterBranch;
 
     public static void main(String[] args) throws GitAPIException {
-        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/TestMeterianPlugin-Freestyle-autofix";
+//        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/TestMeterianSimplePipeline-autofix";
+        String pathToRepo = "path/to/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
 
         PrintStream noOpStream = new PrintStream(new OutputStream() {
             public void write(int b) {
@@ -63,10 +66,13 @@ public class LocalGitClient {
 
     public LocalGitClient(String pathToRepo, PrintStream jenkinsLogger) {
         this.jenkinsLogger = jenkinsLogger;
+        isMasterBranch = false;
 
+        log.info("Workspace (path to the git repo): " + pathToRepo );
         try {
             git = Git.open(new File(pathToRepo));
-            branchName = getMeterianBranchName();
+            currentBranch = getMeterianBranchName();
+            log.info(String.format("Workspace is pointing to branch %s (%s)", currentBranch, getCurrentBranchSHA()));
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -95,20 +101,15 @@ public class LocalGitClient {
                     "bot.github@meterian.io",
                     "Fixes applied via meterian-bot");
 
-            log.info("Finished committing changes to branch " + branchName);
+            log.info("Finished committing changes to branch " + currentBranch);
         } else {
             log.warn(NO_CHANGES_FOUND_WARNING);
             jenkinsLogger.println(NO_CHANGES_FOUND_WARNING);
         }
     }
 
-    public String getBranchName() {
-        return branchName;
-    }
-
     public boolean localBranchDoesNotExists() throws GitAPIException {
-        List<Ref> branchRefList = git.branchList()
-                .call();
+        List<Ref> branchRefList = git.branchList().call();
         List<Ref> foundBranches = branchRefList
                 .stream()
                 .filter(branch -> !branch.getName().contains("remotes"))
@@ -126,39 +127,69 @@ public class LocalGitClient {
         return "";
     }
 
+    public Ref checkoutBranch(String branch) throws GitAPIException {
+        return git.checkout()
+                .setName(branch)
+                .call();
+    }
+
     public void pushBranchToRemoteRepo() throws GitAPIException {
-        log.info("Checking if " + branchName + " already exists in remote repo");
+        log.info(String.format("Checking if the branch %s to be created already exists in remote repo", currentBranch));
         git.fetch()
                 .setRemoveDeletedRefs(true)
                 .call();
-        git.checkout()
-                .setName(branchName)
-                .call();
+        checkoutBranch(currentBranch);
         if (remoteBranchDoesNotExists()) {
-            log.info("Branch does not exist in remote repo, started pushing branch");
-            git.push()
-                    .call();
+            log.info(String.format("Branch %s does not exist in remote repo, started pushing branch", currentBranch));
+            git.push().call();
             log.info("Finished pushing branch to remote repo");
         } else {
-            String branchAlreadyExistsWarning = String.format(REMOTE_BRANCH_ALREADY_EXISTS_WARNING, branchName);
+            String branchAlreadyExistsWarning = String.format(REMOTE_BRANCH_ALREADY_EXISTS_WARNING, currentBranch);
             log.warn(branchAlreadyExistsWarning);
             jenkinsLogger.println(branchAlreadyExistsWarning);
         }
     }
 
-    private String getMeterianBranchName() throws GitAPIException {
-        if (checkIfTheCurrentBranchWasCreatedByMeterianClient()) {
-            return currentBranchName();
-        }
-        return meterianBranchName(currentBranchSHA());
+    public boolean currentBranchIsMaster() {
+        return isMasterBranch;
     }
 
-    private boolean checkIfTheCurrentBranchWasCreatedByMeterianClient() throws GitAPIException {
+    public String getCurrentBranch() throws IOException, GitAPIException {
+        if ((currentBranch != null) && (!currentBranch.isEmpty())) {
+            return currentBranch;
+        }
+
+        currentBranch = stripOffRefsPrefix(
+                Objects.requireNonNull(getHeadRef()).getName()
+        );
+        if (currentBranch.equals("HEAD")) {
+            List<Ref> refs = git.branchList()
+                    .setContains("HEAD")
+                    .call();
+            currentBranch = refs.size() < 1
+                    ? "master"
+                    : refs.get(0).getName();
+            currentBranch = stripOffRefsPrefix(currentBranch);
+        }
+
+        isMasterBranch = currentBranch.equals("master");
+        return currentBranch;
+    }
+
+    private String getMeterianBranchName() throws GitAPIException, IOException {
+        if (checkIfTheCurrentBranchWasCreatedByMeterianClient()) {
+            return getCurrentBranch();
+        }
+        return meterianBranchName(getCurrentBranchSHA());
+    }
+
+    private boolean checkIfTheCurrentBranchWasCreatedByMeterianClient()
+            throws GitAPIException, IOException {
         Iterable<RevCommit> logs = git.log().call();
         if (logs.iterator().hasNext()) {
             RevCommit eachCommit = logs.iterator().next();
             String suffix = shortenSha(eachCommit.toString().split(" ")[1]);
-            return currentBranchName().equals(meterianBranchName(suffix));
+            return getCurrentBranch().equals(meterianBranchName(suffix));
         }
         return false;
     }
@@ -183,28 +214,24 @@ public class LocalGitClient {
                 .isClean();
     }
 
-    private Ref currentBranchRef() throws GitAPIException {
-        List<Ref> refs = git.branchList().call();
-        if (refs.size() > 0) {
-            return refs.get(0);
-        }
-        return null;
+    private String stripOffRefsPrefix(String currentBranch) {
+        return currentBranch.replace("refs/heads/", "");
     }
 
-    private String currentBranchName() throws GitAPIException {
-        return currentBranchRef() != null
-                ? Objects.requireNonNull(currentBranchRef()).getName()
-                : "";
-    }
-
-    private String currentBranchSHA() throws GitAPIException {
-        String longSha = Objects.requireNonNull(currentBranchRef())
+    private String getCurrentBranchSHA() throws IOException {
+        String longSha = Objects.requireNonNull(getHeadRef())
                 .getObjectId()
                 .getName();
 
         return longSha.isEmpty()
                 ? "NO-SHA-FOUND"
                 : shortenSha(longSha); // Extract short SHA from the long 40-chars SHA string
+    }
+
+    private Ref getHeadRef() throws IOException {
+        return git.getRepository()
+                .findRef("HEAD")
+                .getTarget();
     }
 
     private boolean remoteBranchDoesNotExists() throws GitAPIException {
@@ -214,7 +241,7 @@ public class LocalGitClient {
         List<Ref> foundBranches = branchRefList
                 .stream()
                 .filter(branch -> branch.getName().contains("remotes"))
-                .filter(branch -> branch.getName().contains(branchName))
+                .filter(branch -> branch.getName().contains(currentBranch))
                 .collect(Collectors.toList());
         return foundBranches.size() == 0;
     }
@@ -222,16 +249,14 @@ public class LocalGitClient {
     private Ref createBranch() throws GitAPIException {
         log.info("Creating branch");
         Ref branchCreateRef = git.branchCreate()
-                .setName(branchName)
+                .setName(currentBranch)
                 .call();
         Ref checkoutRef = null;
         if (branchCreateRef != null) {
-            checkoutRef = git.checkout()
-                    .setName(branchName)
-                    .call();
+            checkoutRef = checkoutBranch(currentBranch);
         }
 
-        log.info("Created branch " + branchName);
+        log.info("Created branch " + currentBranch);
         return checkoutRef;
     }
 

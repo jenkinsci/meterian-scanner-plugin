@@ -16,8 +16,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -27,8 +25,6 @@ import java.util.Set;
 import static io.meterian.jenkins.glue.Toilet.getConfiguration;
 
 public class MeterianStep extends Step {
-
-    private static final Logger log = LoggerFactory.getLogger(MeterianStep.class);
 
     private final String args;
 

@@ -3,10 +3,14 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.*;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.FreeStyleProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import io.meterian.jenkins.ClientRunner;
 import io.meterian.jenkins.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.io.HttpClientFactory;
@@ -62,30 +66,20 @@ public class MeterianPlugin extends Builder {
 
         client.prepare("--interactive=false");
 
+        ClientRunner clientRunner = new ClientRunner(build, client, jenkinsLogger);
         if (userHasUsedTheAutofixFlag(client)) {
-            Meterian.Result result = new PullRequestCreator(
+            new PullRequestCreator(
                     configuration,
                     environment.get("WORKSPACE"),
-                    client,
+                    clientRunner,
                     jenkinsLogger
             ).execute();
-
-            setBuildResult(build, result);
         } else {
-            Meterian.Result result = client.run();
-            setBuildResult(build, result);
+            clientRunner.execute();
         }
         return true;
     }
-
-    private void setBuildResult(AbstractBuild build, Meterian.Result result) {
-        if (build != null) {
-            if (result.exitCode != 0) {
-                build.setResult(Result.FAILURE);
-            }
-        }
-    }
-
+    
     private boolean userHasUsedTheAutofixFlag(Meterian client) {
         return client.getFinalClientArgs().contains("--autofix");
     }

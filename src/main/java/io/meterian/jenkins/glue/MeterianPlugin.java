@@ -10,8 +10,8 @@ import hudson.model.FreeStyleProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.glue.clientrunners.SimpleClientRunner;
-import io.meterian.jenkins.autofixfeature.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
@@ -69,7 +69,7 @@ public class MeterianPlugin extends Builder {
         SimpleClientRunner clientRunner =
                 new SimpleClientRunner(build, client, jenkinsLogger);
         if (userHasUsedTheAutofixFlag(client)) {
-            new PullRequestCreator(
+            new AutoFixFeature(
                     configuration,
                     environment.get("WORKSPACE"),
                     clientRunner,

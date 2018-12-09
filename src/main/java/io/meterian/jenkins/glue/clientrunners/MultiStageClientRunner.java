@@ -1,7 +1,8 @@
 package io.meterian.jenkins.glue.clientrunners;
 
+import hudson.model.Result;
 import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.glue.executors.MeterianExecutor;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,23 +12,32 @@ public class MultiStageClientRunner implements ClientRunner {
     static final Logger log = LoggerFactory.getLogger(MultiStageClientRunner.class);
 
     private Meterian client;
-    private MeterianExecutor executor;
     private PrintStream jenkinsLogger;
+    private StepContext context;
 
-    public MultiStageClientRunner(MeterianExecutor executor, Meterian client,
-                           PrintStream jenkinsLogger) {
+    public MultiStageClientRunner(Meterian client,
+                                  StepContext context, PrintStream jenkinsLogger) {
         this.client = client;
-        this.executor = executor;
+        this.context = context;
         this.jenkinsLogger = jenkinsLogger;
     }
 
+    @Override
     public void execute() {
         try {
-            executor.run(client);
+            Meterian.Result buildResult = client.run();
+            if (buildResult.exitCode != 0) {
+                context.setResult(Result.FAILURE);
+            }
         } catch (Exception ex) {
             log.warn("Unexpected", ex);
             jenkinsLogger.println("Unexpected exception!");
             ex.printStackTrace(jenkinsLogger);
         }
+    }
+
+    @Override
+    public boolean userHasUsedTheAutofixFlag() {
+        return client.getFinalClientArgs().contains("--autofix");
     }
 }

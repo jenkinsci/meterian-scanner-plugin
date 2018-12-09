@@ -16,7 +16,8 @@ public class SimpleClientRunner implements ClientRunner {
     private PrintStream jenkinsLogger;
 
     public SimpleClientRunner(AbstractBuild build,
-                       Meterian client, PrintStream jenkinsLogger) {
+                              Meterian client,
+                              PrintStream jenkinsLogger) {
         this.build = build;
         this.client = client;
         this.jenkinsLogger = jenkinsLogger;
@@ -34,5 +35,10 @@ public class SimpleClientRunner implements ClientRunner {
             jenkinsLogger.println("Unexpected exception!");
             ex.printStackTrace(jenkinsLogger);
         }
+    }
+
+    @Override
+    public boolean userHasUsedTheAutofixFlag() {
+        return client.getFinalClientArgs().contains("--autofix");
     }
 }

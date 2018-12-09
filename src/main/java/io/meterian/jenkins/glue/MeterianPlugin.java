@@ -11,8 +11,10 @@ import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
-import io.meterian.jenkins.glue.clientrunners.SimpleClientRunner;
 import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.glue.clientrunners.ClientRunner;
+import io.meterian.jenkins.glue.clientrunners.SimpleClientRunner;
+import io.meterian.jenkins.glue.executors.SimpleOrFreeStyleExecutor;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
@@ -66,23 +68,25 @@ public class MeterianPlugin extends Builder {
 
         client.prepare("--interactive=false");
 
-        SimpleClientRunner clientRunner =
+        ClientRunner clientRunner =
                 new SimpleClientRunner(build, client, jenkinsLogger);
-        if (userHasUsedTheAutofixFlag(client)) {
-            new AutoFixFeature(
-                    configuration,
-                    environment.get("WORKSPACE"),
-                    clientRunner,
-                    jenkinsLogger
-            ).execute();
-        } else {
-            clientRunner.execute();
+        AutoFixFeature autoFixFeature = new AutoFixFeature(
+                configuration,
+                environment.get("WORKSPACE"),
+                clientRunner,
+                jenkinsLogger
+        );
+        try {
+            new SimpleOrFreeStyleExecutor(
+                    autoFixFeature, clientRunner
+            ).run(client);
+        } catch (Exception ex) {
+            log.warn("Unexpected", ex);
+            jenkinsLogger.println("Unexpected exception!");
+            ex.printStackTrace(jenkinsLogger);
         }
+
         return true;
-    }
-    
-    private boolean userHasUsedTheAutofixFlag(Meterian client) {
-        return client.getFinalClientArgs().contains("--autofix");
     }
 
     @Extension

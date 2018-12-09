@@ -9,22 +9,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.PrintStream;
 
-public class PullRequestCreator {
+public class AutoFixFeature {
 
     private static final String LOCAL_BRANCH_ALREADY_EXISTS_WARNING =
             "[meterian] Warning: %s already exists in the local repo, skipping the local branch creation process";
 
-    static final Logger log = LoggerFactory.getLogger(PullRequestCreator.class);
+    static final Logger log = LoggerFactory.getLogger(AutoFixFeature.class);
 
     private final LocalGitClient localGitClient;
     private ClientRunner clientRunner;
     private PrintStream jenkinsLogger;
     private MeterianPlugin.Configuration configuration;
 
-    public PullRequestCreator(MeterianPlugin.Configuration configuration,
-                              String workspace,
-                              ClientRunner clientRunner,
-                              PrintStream jenkinsLogger) {
+    public AutoFixFeature(MeterianPlugin.Configuration configuration,
+                          String workspace,
+                          ClientRunner clientRunner,
+                          PrintStream jenkinsLogger) {
         this.configuration = configuration;
         this.clientRunner = clientRunner;
         this.jenkinsLogger = jenkinsLogger;

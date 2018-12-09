@@ -3,9 +3,9 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.TaskListener;
-import io.meterian.jenkins.glue.clientrunners.MultiStageClientRunner;
-import io.meterian.jenkins.autofixfeature.PullRequestCreator;
+import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.glue.clientrunners.MultiStageClientRunner;
 import io.meterian.jenkins.glue.executors.GerritExecutor;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
@@ -82,37 +82,26 @@ public class MeterianStep extends Step {
                     jenkinsLogger,
                     args);
 
+            client.prepare("--interactive=false");
+
             MeterianExecutor executor;
+            MultiStageClientRunner clientRunner =
+                    new MultiStageClientRunner(client, getContext(), jenkinsLogger);
+
             if (Gerrit.isSupported(environment)) {
                 executor = new GerritExecutor(getContext());
             } else {
-                executor = new StandardExecutor(getContext());
+                AutoFixFeature autoFixFeature = new AutoFixFeature(
+                        configuration,
+                        environment.get("WORKSPACE"),
+                        clientRunner,
+                        jenkinsLogger
+                );
+                executor = new StandardExecutor(getContext(), clientRunner, autoFixFeature);
             }
-
-            client.prepare("--interactive=false");
-
-            MultiStageClientRunner clientRunner =
-                    new MultiStageClientRunner(executor, client, jenkinsLogger);
-
-            if (executor instanceof StandardExecutor) {
-                if (userHasUsedTheAutofixFlag(client)) {
-                    new PullRequestCreator(
-                            configuration,
-                            environment.get("WORKSPACE"),
-                            clientRunner,
-                            jenkinsLogger
-                    ).execute();
-                } else {
-                    clientRunner.execute();
-                }
-            } else {
-                clientRunner.execute();
-            }
+            
+            executor.run(client);
             return null;
-        }
-
-        private boolean userHasUsedTheAutofixFlag(Meterian client) {
-            return client.getFinalClientArgs().contains("--autofix");
         }
 
         private static final long serialVersionUID = 1L;

@@ -3,13 +3,18 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.TaskListener;
+import io.meterian.jenkins.ClientRunner;
 import io.meterian.jenkins.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.executors.GerritExecutor;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
 import io.meterian.scm.gerrit.Gerrit;
-import org.jenkinsci.plugins.workflow.steps.*;
+import org.jenkinsci.plugins.workflow.steps.Step;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
+import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,35 +90,24 @@ public class MeterianStep extends Step {
             }
 
             client.prepare("--interactive=false");
+
+            ClientRunner clientRunner = new ClientRunner(executor, client, jenkinsLogger);
+
             if (executor instanceof StandardExecutor) {
                 if (userHasUsedTheAutofixFlag(client)) {
                     new PullRequestCreator(
                             configuration,
                             environment.get("WORKSPACE"),
-                            client,
-                            executor,
+                            clientRunner,
                             jenkinsLogger
                     ).execute();
                 } else {
-                    runMeterianClient(executor, client, jenkinsLogger);
+                    clientRunner.execute();
                 }
             } else {
-                runMeterianClient(executor, client, jenkinsLogger);
+                clientRunner.execute();
             }
             return null;
-        }
-
-        private void runMeterianClient(
-                MeterianExecutor executor,
-                Meterian client,
-                PrintStream jenkinsLogger) {
-            try {
-                executor.run(client);
-            } catch (Exception ex) {
-                log.warn("Unexpected", ex);
-                jenkinsLogger.println("Unexpected exception!");
-                ex.printStackTrace(jenkinsLogger);
-            }
         }
 
         private boolean userHasUsedTheAutofixFlag(Meterian client) {

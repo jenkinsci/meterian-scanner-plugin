@@ -1,10 +1,8 @@
 package io.meterian.jenkins;
 
-import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.git.LocalGitClient;
 import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.jenkins.glue.MeterianPlugin;
-import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,53 +16,26 @@ public class PullRequestCreator {
     static final Logger log = LoggerFactory.getLogger(PullRequestCreator.class);
 
     private final LocalGitClient localGitClient;
-    private MeterianExecutor executor;
+    private ClientRunner clientRunner;
     private PrintStream jenkinsLogger;
     private MeterianPlugin.Configuration configuration;
-    private Meterian client;
-
-    public PullRequestCreator(
-            MeterianPlugin.Configuration configuration,
-            String workspace,
-            Meterian client,
-            MeterianExecutor executor,
-            PrintStream jenkinsLogger) {
-        this.configuration = configuration;
-        this.client = client;
-        this.executor = executor;
-        this.jenkinsLogger = jenkinsLogger;
-
-        localGitClient = new LocalGitClient(workspace, jenkinsLogger);
-    }
 
     public PullRequestCreator(MeterianPlugin.Configuration configuration,
                               String workspace,
-                              Meterian client,
+                              ClientRunner clientRunner,
                               PrintStream jenkinsLogger) {
         this.configuration = configuration;
-        this.client = client;
+        this.clientRunner = clientRunner;
         this.jenkinsLogger = jenkinsLogger;
 
         localGitClient = new LocalGitClient(workspace, jenkinsLogger);
     }
 
-    public Meterian.Result execute() {
-        Meterian.Result buildResult = null;
+    public void execute() {
         try {
             if (localGitClient.localBranchDoesNotExists()) {
                 log.info(localGitClient.getBranchName() + " does not exist in local repo");
-                //TODO: needs refactoring, improvement in design
-                if (executor == null) {
-                    buildResult = client.run();
-                } else {
-                    try {
-                        executor.run(client);
-                    } catch (Exception ex) {
-                        log.warn("Unexpected", ex);
-                        jenkinsLogger.println("Unexpected exception!");
-                        ex.printStackTrace(jenkinsLogger);
-                    }
-                }
+                clientRunner.execute();
                 localGitClient.applyCommitsToLocalRepo();
             } else {
                 String branchAlreadyExistsWarning =
@@ -87,7 +58,5 @@ public class PullRequestCreator {
             log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
             throw new RuntimeException(ex);
         }
-
-        return buildResult;
     }
 }

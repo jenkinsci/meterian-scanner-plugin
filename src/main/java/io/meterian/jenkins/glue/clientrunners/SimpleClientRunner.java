@@ -1,4 +1,4 @@
-package io.meterian.jenkins.glue;
+package io.meterian.jenkins.glue.clientrunners;
 
 import hudson.model.AbstractBuild;
 import hudson.model.Result;
@@ -15,7 +15,7 @@ public class SimpleClientRunner implements ClientRunner {
     private Meterian client;
     private PrintStream jenkinsLogger;
 
-    SimpleClientRunner(AbstractBuild build,
+    public SimpleClientRunner(AbstractBuild build,
                        Meterian client, PrintStream jenkinsLogger) {
         this.build = build;
         this.client = client;

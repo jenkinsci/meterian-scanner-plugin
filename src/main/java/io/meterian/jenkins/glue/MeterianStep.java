@@ -3,6 +3,7 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.TaskListener;
+import io.meterian.jenkins.glue.clientrunners.MultiStageClientRunner;
 import io.meterian.jenkins.autofixfeature.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.executors.GerritExecutor;

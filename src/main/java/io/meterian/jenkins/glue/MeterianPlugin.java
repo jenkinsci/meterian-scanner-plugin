@@ -10,6 +10,7 @@ import hudson.model.FreeStyleProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import io.meterian.jenkins.glue.clientrunners.SimpleClientRunner;
 import io.meterian.jenkins.autofixfeature.PullRequestCreator;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.io.HttpClientFactory;

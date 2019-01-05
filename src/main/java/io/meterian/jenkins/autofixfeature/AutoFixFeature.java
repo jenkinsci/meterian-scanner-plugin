@@ -34,17 +34,11 @@ public class AutoFixFeature {
 
     public void execute() {
         try {
-            if (localGitClient.localBranchDoesNotExists()) {
+            if (localGitClient.currentBranchWasNotCreatedByMeterianClient() &&
+                    localGitClient.otherMeterianLocalBranchesDoNotExist()) {
                 log.info(localGitClient.getCurrentBranch() + " does not exist in local repo");
                 clientRunner.execute();
                 localGitClient.applyCommitsToLocalRepo();
-            } else if (localGitClient.currentBranchIsMaster()) {
-                log.info(String.format("Local master has not yet been updated with fixes, " +
-                        "please merge any pending pull request (maybe linked to the %s branch",
-                        localGitClient.getCurrentBranch()));
-                localGitClient.checkoutBranch("master");
-                clientRunner.execute();
-                return;
             } else {
                 String branchAlreadyExistsWarning =
                         String.format(LOCAL_BRANCH_ALREADY_EXISTS_WARNING, localGitClient.getCurrentBranch());

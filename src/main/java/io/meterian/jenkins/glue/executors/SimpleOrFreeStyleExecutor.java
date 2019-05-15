@@ -3,20 +3,16 @@ package io.meterian.jenkins.glue.executors;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
-import org.jenkinsci.plugins.workflow.steps.StepContext;
 
-public class StandardExecutor implements MeterianExecutor {
+public class SimpleOrFreeStyleExecutor implements MeterianExecutor {
 
-    private StepContext context;
-    private ClientRunner clientRunner;
     private AutoFixFeature autoFixFeature;
+    private ClientRunner clientRunner;
 
-    public StandardExecutor(StepContext context,
-                            ClientRunner clientRunner,
-                            AutoFixFeature autoFixFeature) {
-        this.context = context;
-        this.clientRunner = clientRunner;
+    public SimpleOrFreeStyleExecutor(AutoFixFeature autoFixFeature,
+                              ClientRunner clientRunner) {
         this.autoFixFeature = autoFixFeature;
+        this.clientRunner = clientRunner;
     }
 
     @Override

@@ -7,13 +7,14 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.model.FreeStyleProject;
-import hudson.model.Result;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.git.LocalGitClient;
-import io.meterian.jenkins.github.LocalGitHubClient;
+import io.meterian.jenkins.glue.clientrunners.ClientRunner;
+import io.meterian.jenkins.glue.clientrunners.SimpleClientRunner;
+import io.meterian.jenkins.glue.executors.SimpleOrFreeStyleExecutor;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
 import org.apache.http.HttpResponse;
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.URI;
 
 import static io.meterian.jenkins.glue.Toilet.getConfiguration;
@@ -57,49 +59,34 @@ public class MeterianPlugin extends Builder {
 
         EnvVars environment = build.getEnvironment(listener);
         Configuration configuration = getConfiguration();
+        PrintStream jenkinsLogger = listener.getLogger();
         Meterian client = Meterian.build(
                 configuration,
                 environment,
-                listener.getLogger(),
+                jenkinsLogger,
                 args);
 
-        Meterian.Result result = client.run("--interactive=false");
-        if (result.exitCode != 0) {
-            build.setResult(Result.FAILURE);
-        }
+        client.prepare("--interactive=false");
 
-        applyCommitsAndCreatePullRequest(
-                client,
+        ClientRunner clientRunner =
+                new SimpleClientRunner(build, client, jenkinsLogger);
+        AutoFixFeature autoFixFeature = new AutoFixFeature(
+                configuration,
                 environment.get("WORKSPACE"),
-                configuration.getGithubToken()
+                clientRunner,
+                jenkinsLogger
         );
+        try {
+            new SimpleOrFreeStyleExecutor(
+                    autoFixFeature, clientRunner
+            ).run(client);
+        } catch (Exception ex) {
+            log.warn("Unexpected", ex);
+            jenkinsLogger.println("Unexpected exception!");
+            ex.printStackTrace(jenkinsLogger);
+        }
 
         return true;
-    }
-
-    private void applyCommitsAndCreatePullRequest(
-            Meterian client,
-            String workspace,
-            String githubToken) {
-        try {
-            if (userHasUsedTheAutofixFlag(client)) {
-                LocalGitClient localGitClient = new LocalGitClient(workspace);
-                if (localGitClient.applyCommits()) {
-                    new LocalGitHubClient().createPullRequest(
-                            githubToken,
-                            localGitClient.getOrgOrUsername(),
-                            localGitClient.getRepositoryName(),
-                            localGitClient.getBranchName());
-                }
-            }
-        } catch (Exception ex) {
-            log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
-            throw new RuntimeException(ex);
-        }
-    }
-
-    private boolean userHasUsedTheAutofixFlag(Meterian client) {
-        return client.getFinalClientArgs().contains("--autofix");
     }
 
     @Extension

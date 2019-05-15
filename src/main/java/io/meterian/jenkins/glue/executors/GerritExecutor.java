@@ -49,7 +49,8 @@ public class GerritExecutor implements MeterianExecutor {
         }
         
         logger.println("[meterian] A critical change on a manifest file was detected - running Meterian analysis...");
-        Result result = client.run("--interactive=false", "--autofix:readonly");
+        client.prepare("--interactive=false", "--autofix:readonly");
+        Result result = client.run();
 
         logger.format("[meterian] Checking %d manifest file(s) %n", manifests.size());
         generateRobotComments(gerrit, manifests, result);

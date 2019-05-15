@@ -3,12 +3,12 @@ package io.meterian.jenkins.glue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.TaskListener;
+import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
+import io.meterian.jenkins.glue.clientrunners.MultiStageClientRunner;
 import io.meterian.jenkins.glue.executors.GerritExecutor;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
-import io.meterian.jenkins.git.LocalGitClient;
-import io.meterian.jenkins.github.LocalGitHubClient;
 import io.meterian.scm.gerrit.Gerrit;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -16,8 +16,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -27,8 +25,6 @@ import java.util.Set;
 import static io.meterian.jenkins.glue.Toilet.getConfiguration;
 
 public class MeterianStep extends Step {
-    
-    private static final Logger log = LoggerFactory.getLogger(MeterianStep.class);
 
     private final String args;
 
@@ -72,64 +68,36 @@ public class MeterianStep extends Step {
 
         @Override
         protected Void run() throws Exception {
-            PrintStream logger = getContext().get(TaskListener.class).getLogger();
+            PrintStream jenkinsLogger = getContext().get(TaskListener.class).getLogger();
             EnvVars environment = getContext().get(EnvVars.class);
 
             MeterianPlugin.Configuration configuration = getConfiguration();
             Meterian client = Meterian.build(
                     configuration,
                     environment,
-                    logger,
+                    jenkinsLogger,
                     args);
 
+            client.prepare("--interactive=false");
+
             MeterianExecutor executor;
+            MultiStageClientRunner clientRunner =
+                    new MultiStageClientRunner(client, getContext(), jenkinsLogger);
+
             if (Gerrit.isSupported(environment)) {
                 executor = new GerritExecutor(getContext());
             } else {
-                executor = new StandardExecutor(getContext());
-            }
-
-            try {
-                executor.run(client);
-            } catch (Exception ex) {
-                log.warn("Unexpected", ex);
-                logger.println("Unxpected exception!");
-                ex.printStackTrace(logger);
-            }
-
-            if (executor instanceof StandardExecutor) {
-                applyCommitsAndCreatePullRequest(
-                        client,
+                AutoFixFeature autoFixFeature = new AutoFixFeature(
+                        configuration,
                         environment.get("WORKSPACE"),
-                        configuration.getGithubToken()
+                        clientRunner,
+                        jenkinsLogger
                 );
+                executor = new StandardExecutor(getContext(), clientRunner, autoFixFeature);
             }
+            
+            executor.run(client);
             return null;
-        }
-
-        private void applyCommitsAndCreatePullRequest(
-                Meterian client,
-                String workspace,
-                String githubToken) {
-            try {
-                if (userHasUsedTheAutofixFlag(client)) {
-                    LocalGitClient localGitClient = new LocalGitClient(workspace);
-                    if (localGitClient.applyCommits()) {
-                        new LocalGitHubClient().createPullRequest(
-                                githubToken,
-                                localGitClient.getOrgOrUsername(),
-                                localGitClient.getRepositoryName(),
-                                localGitClient.getBranchName());
-                    }
-                }
-            } catch (Exception ex) {
-                log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
-                throw new RuntimeException(ex);
-            }
-        }
-
-        private boolean userHasUsedTheAutofixFlag(Meterian client) {
-            return client.getFinalClientArgs().contains("--autofix");
         }
 
         private static final long serialVersionUID = 1L;

@@ -1,5 +1,6 @@
 # jenkins-plugin
 The official Meterian plugin for Jenkins.
+[![CircleCI](https://circleci.com/gh/MeterianHQ/jenkins-plugin.svg?style=svg)](https://circleci.com/gh/MeterianHQ/jenkins-plugin)
 
 This has not been published yet, but you can have a look at the code and snoop around. This plugin is expected to work in classic jobs and pipelines (Jenkinsfile) with the ability to include the analysis as part of your build process, as it should be.
 

@@ -13,7 +13,6 @@ import hudson.util.FormValidation;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
-import io.meterian.jenkins.glue.clientrunners.SimpleClientRunner;
 import io.meterian.jenkins.glue.executors.SimpleOrFreeStyleExecutor;
 import io.meterian.jenkins.io.HttpClientFactory;
 import net.sf.json.JSONObject;
@@ -69,7 +68,7 @@ public class MeterianPlugin extends Builder {
         client.prepare("--interactive=false");
 
         ClientRunner clientRunner =
-                new SimpleClientRunner(build, client, jenkinsLogger);
+                new ClientRunner(build, client, jenkinsLogger);
         AutoFixFeature autoFixFeature = new AutoFixFeature(
                 configuration,
                 environment.get("WORKSPACE"),

@@ -7,20 +7,17 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 public class StandardExecutor implements MeterianExecutor {
 
-    private StepContext context;
     private ClientRunner clientRunner;
     private AutoFixFeature autoFixFeature;
 
-    public StandardExecutor(StepContext context,
-                            ClientRunner clientRunner,
+    public StandardExecutor(ClientRunner clientRunner,
                             AutoFixFeature autoFixFeature) {
-        this.context = context;
         this.clientRunner = clientRunner;
         this.autoFixFeature = autoFixFeature;
     }
 
     @Override
-    public void run(Meterian client) throws Exception {
+    public void run(Meterian client) {
         if (clientRunner.userHasUsedTheAutofixFlag()) {
             autoFixFeature.execute();
         } else {

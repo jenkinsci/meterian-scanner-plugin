@@ -11,3 +11,7 @@ More to be written here after the plugin is launched :)
 #### Additional information and sources about writing plugins for Jenkins
 https://wiki.jenkins.io/display/JENKINS/Plugin+tutorial
 https://wiki.jenkins.io/display/JENKINS/Create+a+new+Plugin+with+a+custom+build+Step
+
+#### Build status
+[![CircleCI](https://circleci.com/gh/MeterianHQ/jenkins-plugin.svg?style=svg)](https://circleci.com/gh/MeterianHQ/jenkins-plugin)
+

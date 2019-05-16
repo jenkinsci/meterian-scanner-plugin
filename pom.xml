@@ -31,9 +31,9 @@
 		</license>
 	</licenses>
 
-	<!-- Assuming you want to host on @jenkinsci: <url>https://wiki.jenkins.io/display/JENKINS/TODO+Plugin</url> 
-		<scm> <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection> 
-		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection> 
+	<!-- Assuming you want to host on @jenkinsci: <url>https://wiki.jenkins.io/display/JENKINS/TODO+Plugin</url>
+		<scm> <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
+		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
 		<url>https://github.com/jenkinsci/${project.artifactId}-plugin</url> </scm> -->
 	<dependencies>
 
@@ -106,7 +106,7 @@
 		    <artifactId>script-security</artifactId>
 		    <version>1.42</version>
 		</dependency>
-		
+
 		<dependency>
 		    <groupId>org.apache.httpcomponents</groupId>
 		    <artifactId>httpclient</artifactId>
@@ -140,9 +140,27 @@
 		</dependency>
 	</dependencies>
 
-	<!-- <build> <plugins> <plugin> <groupId>org.jenkins-ci.tools</groupId> 
-		<artifactId>maven-hpi-plugin</artifactId> <configuration> <pluginFirstClassLoader>true</pluginFirstClassLoader> 
-		</configuration> </plugin> </plugins> </build> -->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <useSystemClassLoader>false</useSystemClassLoader>
+                </configuration>
+            </plugin>
+            <!--
+            <plugin>
+                <groupId>org.jenkins-ci.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <configuration>
+                    <pluginFirstClassLoader>true</pluginFirstClassLoader>
+                </configuration>
+            </plugin>
+            -->
+        </plugins>
+    </build>
+
 	<repositories>
 		<repository>
 			<id>repo.jenkins-ci.org</id>

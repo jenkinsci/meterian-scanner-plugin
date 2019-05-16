@@ -68,7 +68,7 @@ public class MeterianPlugin extends Builder {
         client.prepare("--interactive=false");
 
         ClientRunner clientRunner =
-                new ClientRunner(build, client, jenkinsLogger);
+                new ClientRunner(client, build, jenkinsLogger);
         AutoFixFeature autoFixFeature = new AutoFixFeature(
                 configuration,
                 environment.get("WORKSPACE"),

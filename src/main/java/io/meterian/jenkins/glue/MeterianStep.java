@@ -5,7 +5,7 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
-import io.meterian.jenkins.glue.clientrunners.MultiStageClientRunner;
+import io.meterian.jenkins.glue.clientrunners.ClientRunner;
 import io.meterian.jenkins.glue.executors.GerritExecutor;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
@@ -81,8 +81,8 @@ public class MeterianStep extends Step {
             client.prepare("--interactive=false");
 
             MeterianExecutor executor;
-            MultiStageClientRunner clientRunner =
-                    new MultiStageClientRunner(client, getContext(), jenkinsLogger);
+            ClientRunner clientRunner =
+                    new ClientRunner(client, getContext(), jenkinsLogger);
 
             if (Gerrit.isSupported(environment)) {
                 executor = new GerritExecutor(getContext());
@@ -93,7 +93,7 @@ public class MeterianStep extends Step {
                         clientRunner,
                         jenkinsLogger
                 );
-                executor = new StandardExecutor(getContext(), clientRunner, autoFixFeature);
+                executor = new StandardExecutor(clientRunner, autoFixFeature);
             }
             
             executor.run(client);

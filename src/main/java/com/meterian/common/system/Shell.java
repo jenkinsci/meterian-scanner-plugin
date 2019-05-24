@@ -11,8 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import io.meterian.jenkins.core.Meterian;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
@@ -102,23 +100,6 @@ public class Shell {
     }
 
     public static class Task {
-        public static void main(String[] args) throws IOException {
-            String[] commands = new String[]{
-                    "java",
-                    "-Dcli.param.folder=/path/to/workspace/TestMeterianPlugin-Freestyle-autofix",
-                    "-jar",
-                    "/path/to/.meterian/meterian-cli.jar", "--interactive=false"};
-
-            Meterian.Result result = new Meterian.Result();
-            Shell shell = new Shell();
-
-            Task task = shell.exec(commands, new Options());
-            task.waitFor();
-            result.exitCode = task.exitValue();
-
-            System.out.println(result.exitCode);
-        }
-
         public static final long DEFAULT_TIMEOUT_IN_SECONDS = 60L*5L;
 
         private final Process process;

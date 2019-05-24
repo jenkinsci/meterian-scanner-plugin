@@ -24,7 +24,7 @@ hs_err_pid*
 
 # maven, jenkins, meterian
 target
-work
+work*/
 *.fix
 *~
 
@@ -35,3 +35,4 @@ work
 
 .idea/
 meterian-plugin.iml
+.DS_Store

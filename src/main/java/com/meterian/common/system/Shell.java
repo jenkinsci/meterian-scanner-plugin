@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import io.meterian.jenkins.core.Meterian;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
@@ -24,15 +25,15 @@ public class Shell {
     private static final Logger log = LoggerFactory.getLogger(Shell.class);
 
     public static class Options {
-    	private LineGobbler outputGobbler = NO_GOBBLER; 
-    	private LineGobbler errorGobbler = NO_GOBBLER;
-    	private File workingFolder = null;
-        private List<String> envps = new ArrayList<>();
-        
-        public Options withOutputGobbler(LineGobbler gobbler) {
-        	this.outputGobbler = gobbler;
-        	return this;
-        }
+       private LineGobbler outputGobbler = NO_GOBBLER;
+       private LineGobbler errorGobbler = NO_GOBBLER;
+       private File workingFolder = null;
+       private List<String> envps = new ArrayList<>();
+
+       public Options withOutputGobbler(LineGobbler gobbler) {
+           this.outputGobbler = gobbler;
+           return this;
+       }
         
         public Options withErrorGobbler(LineGobbler gobbler) {
         	this.errorGobbler = gobbler;
@@ -99,14 +100,14 @@ public class Shell {
         }
 
     }
-    
+
     public static class Task {
         public static void main(String[] args) throws IOException {
             String[] commands = new String[]{
                     "java",
-                    "-Dcli.param.folder=/Users/swami/git-repos/meterian/jenkins-plugin/work/workspace/TestMeterianPlugin-Freestyle-autofix",
+                    "-Dcli.param.folder=/path/to/workspace/TestMeterianPlugin-Freestyle-autofix",
                     "-jar",
-                    "/Users/swami/.meterian/meterian-cli.jar", "--interactive=false"};
+                    "/path/to/.meterian/meterian-cli.jar", "--interactive=false"};
 
             Meterian.Result result = new Meterian.Result();
             Shell shell = new Shell();
@@ -122,7 +123,7 @@ public class Shell {
 
         private final Process process;
         private final CountDownLatch ioLatch;
-        
+
         public Task(Process process) {
             this.process = process;
             this.ioLatch = new CountDownLatch(2);
@@ -183,24 +184,14 @@ public class Shell {
             log.debug("Running shell commmand {} with options {}",Arrays.asList(commands), options);
 
         Process process;
-        ProcessBuilder processBuilder = new ProcessBuilder(commands);
-        processBuilder.environment().values().addAll(options.envps);
-
-//        if (options.workingFolder == null)
-//            process = Runtime.getRuntime().exec(commands, options.envp());
-//        else
-//            process = Runtime.getRuntime().exec(commands, options.envp(), options.workingFolder);
-        if (options.workingFolder != null) {
-            processBuilder.directory(options.workingFolder);
-        }
-        process = processBuilder.start();
+        if (options.workingFolder == null)
+            process = Runtime.getRuntime().exec(commands, options.envp());
+        else
+            process = Runtime.getRuntime().exec(commands, options.envp(), options.workingFolder);
 
         Task task =  new Task(process);
         threadPool.execute(new StreamGobbler(process.getInputStream(), "STDOUT", options.outputGobbler, task.ioLatch));
         threadPool.execute(new StreamGobbler(process.getErrorStream(), "STDERR", options.errorGobbler, task.ioLatch));
-        File outputlog = new File("/tmp/log.txt");
-        processBuilder.redirectErrorStream(true);
-        processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outputlog));
         return task;
     }
 }

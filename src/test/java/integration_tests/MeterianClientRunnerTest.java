@@ -1,7 +1,6 @@
 package integration_tests;
 
 import hudson.EnvVars;
-import hudson.model.Descriptor;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
@@ -12,8 +11,11 @@ import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
@@ -31,13 +33,16 @@ public class MeterianClientRunnerTest {
     private String jenkinsProjectName = "TestMeterianPlugin-Freestyle-autofix";
 
     @Test
-//    @Ignore("Under implementation")
+//    @Ignore("Runs only in an environment with the Jenkins hpi and Meterian setup in place")
     public void givenConfiguration_whenMeterianClientIsRun_thenItShouldNotThrowException()
-            throws IOException, ParserConfigurationException, SAXException, Descriptor.FormException {
-        String pathToMeterianPluginConfig = CURRENT_WORKING_DIR + "/work/io.meterian.jenkins.glue.MeterianPlugin.xml";
-
-        MeterianPlugin.Configuration configuration = new MeterianPlugin.Configuration(pathToMeterianPluginConfig);
+            throws IOException, ParserConfigurationException, SAXException {
         EnvVars environment = getEnvironment(jenkinsProjectName);
+        MeterianPlugin.Configuration configuration = new MeterianPlugin.Configuration(
+                BASE_URL,
+                environment.get("METERIAN_API_TOKEN"),
+                "", // jvmArgs
+                environment.get("METERIAN_GITHUB_TOKEN")
+        );
 
         File logFile = File.createTempFile("jenkins-logger", Long.toString(System.nanoTime()));
         PrintStream jenkinsLogger = new PrintStream(logFile);
@@ -99,11 +104,25 @@ public class MeterianClientRunnerTest {
             }});
     }
 
-    private EnvVars getEnvironment(String projectName) {
+    private EnvVars getEnvironment(String projectName) throws IOException, SAXException, ParserConfigurationException {
         EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
         EnvVars environment = prop.getEnvVars();
         environment.put("WORKSPACE", getPathToWorkspace(projectName));
+
+        String pathToMeterianPluginConfig = CURRENT_WORKING_DIR + "/work/io.meterian.jenkins.glue.MeterianPlugin.xml";
+        Document xmlDocument = loadXMLFile(pathToMeterianPluginConfig);
+        environment.put("METERIAN_API_TOKEN", xmlDocument.getElementsByTagName("token").item(0).getTextContent());
+        environment.put("METERIAN_GITHUB_TOKEN", xmlDocument.getElementsByTagName("githubToken").item(0).getTextContent());
         return environment;
+    }
+
+    private Document loadXMLFile(String filename) throws ParserConfigurationException, IOException, SAXException {
+        File file = new File(filename);
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        DocumentBuilder db = dbf.newDocumentBuilder();
+        Document document = db.parse(file);
+        document.getDocumentElement().normalize();
+        return document;
     }
 
     private String getPathToWorkspace(String projectName) {

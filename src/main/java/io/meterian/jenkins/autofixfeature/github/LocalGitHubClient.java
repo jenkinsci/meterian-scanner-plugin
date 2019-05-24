@@ -19,8 +19,8 @@ public class LocalGitHubClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitHubClient.class);
 
-    private static final String GITHUB_TOKEN_ABSENT_WARNING =
-            "[meterian] Warning: GITHUB_TOKEN has not been set in the config (please check meterian settings in " +
+    private static final String METERIAN_GITHUB_TOKEN_ABSENT_WARNING =
+            "[meterian] Warning: METERIAN_GITHUB_TOKEN has not been set in the config (please check meterian settings in " +
                     "Manage Jenkins), cannot create pull request.";
     private static final String PULL_REQUEST_ALREADY_EXISTS_WARNING =
             "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. " +
@@ -43,7 +43,7 @@ public class LocalGitHubClient {
             }
         });
         new LocalGitHubClient(
-                System.getenv("GITHUB_TOKEN"),
+                System.getenv("METERIAN_GITHUB_TOKEN"),
                 "MeterianHQ",
                 "MeterianHQ/autofix-sample-maven-upgrade",
                 noOpStream).createPullRequest("fixed-by-meterian-29c4d26");
@@ -58,8 +58,8 @@ public class LocalGitHubClient {
         this.jenkinsLogger = jenkinsLogger;
 
         if (gitHubToken == null || gitHubToken.isEmpty()) {
-            log.warn(GITHUB_TOKEN_ABSENT_WARNING);
-            jenkinsLogger.println(GITHUB_TOKEN_ABSENT_WARNING);
+            log.warn(METERIAN_GITHUB_TOKEN_ABSENT_WARNING);
+            jenkinsLogger.println(METERIAN_GITHUB_TOKEN_ABSENT_WARNING);
             return;
         }
 

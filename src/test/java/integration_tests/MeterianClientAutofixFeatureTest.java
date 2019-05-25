@@ -6,6 +6,7 @@ import com.meterian.common.system.Shell;
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
+import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
@@ -51,9 +52,13 @@ public class MeterianClientAutofixFeatureTest {
 
         new File(gitRepoRootFolder).mkdir();
 
-        gitRepoWorkingFolder = performCloneGitRepo("MeterianHQ", "autofix-sample-maven-upgrade", gitRepoRootFolder);
+        String githubProjectName = "autofix-sample-maven-upgrade";
+        gitRepoWorkingFolder = Paths.get(gitRepoRootFolder, githubProjectName).toString();
+
+        performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder);
 
         // Deleting remote branch automatically closes any Pull Request attached to it
+        configureGitUserNameAndEmail(LocalGitClient.METERIAN_BOT, LocalGitClient.METERIAN_BOT_EMAIL);
         deleteRemoteBranch("fixed-by-meterian-29c4d26");
     }
 
@@ -126,6 +131,36 @@ public class MeterianClientAutofixFeatureTest {
         }
     }
 
+    private void configureGitUserNameAndEmail(String userName, String userEmail) throws IOException {
+        // git config --global user.name "Your Name"
+        String[] gitConfigUserNameCommand = new String[] {
+            "git",
+            "config",
+            "--global",
+            "user.name",
+            userName
+        };
+
+        int exitCode = runCommand(gitConfigUserNameCommand, gitRepoWorkingFolder, log);
+
+        assertThat("Cannot run the test, as we were unable configure a user due to error code: " +
+                exitCode, exitCode, is(equalTo(0)));
+
+        // git config --global user.email "you@example.com"
+        String[] gitConfigUserEmailCommand = new String[] {
+                "git",
+                "config",
+                "--global",
+                "user.email",
+                userEmail
+        };
+
+        exitCode = runCommand(gitConfigUserEmailCommand, gitRepoWorkingFolder, log);
+
+        assertThat("Cannot run the test, as we were unable configure a user userEmail due to error code: " +
+                exitCode, exitCode, is(equalTo(0)));
+    }
+
     private void deleteRemoteBranch(String branchName) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
@@ -134,21 +169,10 @@ public class MeterianClientAutofixFeatureTest {
                 ":" + branchName
         };
 
-        LineGobbler errorLineGobbler = (type, text) ->
-                log.error("{}> {}", type, text);
-
-        Shell.Options options = new Shell.Options()
-                .onDirectory(new File(gitRepoWorkingFolder))
-                .withErrorGobbler(errorLineGobbler);
-        Shell.Task task = new Shell().exec(
-                gitCloneRepoCommand,
-                options
-        );
-
-        task.waitFor();
+        int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
 
         assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
-                task.exitValue(), task.exitValue(), is(equalTo(0)));
+               exitCode, exitCode, is(equalTo(0)));
 
     }
 
@@ -157,25 +181,34 @@ public class MeterianClientAutofixFeatureTest {
         return FileUtils.readFileToString(logFile);
     }
 
-    private String performCloneGitRepo(final String githubOrgOrUserName, String githubProjectName, String gitRepoRootFolder) throws IOException {
+    private void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
                 "git@github.com:" + githubOrgOrUserName + "/" + githubProjectName + ".git"
         };
 
-        Shell.Options options = new Shell.Options().
-                onDirectory(new File(gitRepoRootFolder));
-        Shell.Task task = new Shell().exec(
-                gitCloneRepoCommand,
-                options
-        );
-        task.waitFor();
+        int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);
 
         assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
-                task.exitValue(), task.exitValue(), is(equalTo(0)));
+                exitCode, exitCode, is(equalTo(0)));
+    }
 
-        return Paths.get(gitRepoRootFolder, githubProjectName).toString();
+
+    private int runCommand(String[] command, String workingFolder, Logger log) throws IOException {
+        LineGobbler errorLineGobbler = (type, text) ->
+                log.error("{}> {}", type, text);
+
+        Shell.Options options = new Shell.Options()
+                .onDirectory(new File(workingFolder))
+                .withErrorGobbler(errorLineGobbler)
+                .withEnvironmentVariables(getOSEnvSettings());
+        Shell.Task task = new Shell().exec(
+                command,
+                options
+        );
+
+        return task.waitFor();
     }
 
     private PrintStream nullPrintStream() {
@@ -212,6 +245,12 @@ public class MeterianClientAutofixFeatureTest {
     }
 
     private EnvVars getEnvironment() {
+        EnvVars environment = getOSEnvSettings();
+        environment.put("WORKSPACE", gitRepoWorkingFolder);
+        return environment;
+    }
+
+    private EnvVars getOSEnvSettings() {
         EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
         EnvVars environment = prop.getEnvVars();
 
@@ -219,7 +258,6 @@ public class MeterianClientAutofixFeatureTest {
         for (String envKey: localEnvironment.keySet()) {
             environment.put(envKey, localEnvironment.get(envKey));
         }
-        environment.put("WORKSPACE", gitRepoWorkingFolder);
         return environment;
     }
 }

@@ -27,8 +27,8 @@ public class LocalGitClient {
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    private static final String METERIAN_BOT = "meterian-bot";
-    private static final String METERIAN_BOT_EMAIL = "bot.github@meterian.io";
+    public static final String METERIAN_BOT = "meterian-bot";
+    public static final String METERIAN_BOT_EMAIL = "bot.github@meterian.io";
     private static final String METERIAN_COMMIT_MESSAGE = "Fixes applied via " + METERIAN_BOT;
 
     private final Git git;

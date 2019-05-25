@@ -52,7 +52,7 @@ mvn test
 ### Specific tests
 
 ```bash
-mvn test -Dtest=MeterianClientRunnerTest
+mvn test -Dtest=MeterianClientTest
 ```
 
 ## Jenkins job types

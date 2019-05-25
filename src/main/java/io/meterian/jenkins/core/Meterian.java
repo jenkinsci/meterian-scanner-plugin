@@ -1,6 +1,7 @@
 package io.meterian.jenkins.core;
 
 import com.meterian.common.system.LineGobbler;
+import com.meterian.common.system.OS;
 import com.meterian.common.system.Shell;
 import com.meterian.common.system.Shell.Options;
 import com.meterian.common.system.Shell.Task;
@@ -24,7 +25,7 @@ import java.util.*;
 
 public class Meterian {
 
-    public class Result {
+    public static class Result {
 
         public int exitCode;
         public UUID projectUUID;
@@ -56,6 +57,13 @@ public class Meterian {
         return meterian;
     }
 
+    public static Meterian build(Configuration config, EnvVars environment, PrintStream logger, String args, File clientJar)
+            throws IOException {
+        Meterian meterian = new Meterian(config, environment, logger, args);
+        meterian.init(clientJar);
+        return meterian;
+    }
+
     private Meterian(Configuration config, EnvVars environment, PrintStream logger, String args) throws IOException {
         this.config = config;
         this.args = args;
@@ -67,6 +75,10 @@ public class Meterian {
     private void init() throws IOException {
         HttpClient httpClient = new HttpClientFactory().newHttpClient(config);
         clientJar = new ClientDownloader(httpClient, config.getMeterianBaseUrl(), console).load();
+    }
+
+    private void init(File clientJar) {
+        this.clientJar = clientJar;
     }
 
     public void prepare(String... extraClientArgs) {
@@ -98,7 +110,7 @@ public class Meterian {
     }
 
     private List<String> compose(String standardArgs, String[] extraArgs) {
-        List<String> args = new ArrayList<String>();
+        List<String> args = new ArrayList<>();
 
         if (standardArgs != null) {
             for (String s : standardArgs.split(" ")) {
@@ -179,13 +191,13 @@ public class Meterian {
             }
         };
 
-        this.environment.put("METERIAN_API_TOKEN", config.getToken());
         log.info("Using config token: {}", config.getToken() != null ? "yes" : "no");
 
         return new Options()
                 .withOutputGobbler(gobbler)
                 .withErrorGobbler(gobbler)
-                .withEnvironmentVariables(this.environment);
+                .withEnvironmentVariables(this.environment)
+                .withEnvironmentVariable("METERIAN_API_TOKEN", config.getToken())
+                .withEnvironmentVariables(new OS().getenv());
     }
-
 }

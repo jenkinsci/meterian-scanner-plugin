@@ -104,6 +104,15 @@ public class MeterianPlugin extends Builder {
             load();
         }
 
+        public Configuration(String url, String token, String jvmArgs, String githubToken) {
+            this.url = url;
+            this.token = token;
+            this.jvmArgs = jvmArgs;
+            this.githubToken = githubToken;
+
+            log.info("Read configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]", url, jvmArgs, mask(token), mask(githubToken));
+        }
+
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
             return true | FreeStyleProject.class.isAssignableFrom(jobType);

@@ -5,8 +5,6 @@ import com.meterian.common.system.Shell;
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
-import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
-import io.meterian.jenkins.autofixfeature.github.LocalGitHubClient;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
@@ -17,10 +15,8 @@ import io.meterian.jenkins.io.HttpClientFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -32,7 +28,6 @@ import java.util.Map;
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
 public class MeterianClientAutofixFeatureTest {
@@ -51,14 +46,15 @@ public class MeterianClientAutofixFeatureTest {
 
         new File(gitRepoRootFolder).mkdir();
 
-        gitRepoWorkingFolder = performCloneGitRepo(gitRepoRootFolder);
+        gitRepoWorkingFolder = performCloneGitRepo("autofix-sample-maven-upgrade", "MeterianHQ", gitRepoRootFolder);
+
+        // Deleting remote branch automatically closes any Pull Request attached to it
+        deleteRemoteBranch("fixed-by-meterian-29c4d26");
     }
 
     @Test
-    @Ignore
-    public void givenConfiguration_whenMeterianClientIsRunWithAutofixOption_thenItShouldReturnAnalysisReportAndFixThem() throws IOException, GitAPIException {
+    public void givenConfiguration_whenMeterianClientIsRunWithAutofixOptionForTheFirstTime_thenItShouldReturnAnalysisReportAndFixThem() throws IOException {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
-
         EnvVars environment = getEnvironment();
         String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
         assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
@@ -74,13 +70,12 @@ public class MeterianClientAutofixFeatureTest {
 
         File logFile = File.createTempFile("jenkins-logger", Long.toString(System.nanoTime()));
         PrintStream jenkinsLogger = new PrintStream(logFile);
-
-        String args = "";
+        System.out.println("Jenkins log file: " + logFile.toPath().toString());
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         try {
             File clientJar = new ClientDownloader(newHttpClient(), BASE_URL, nullPrintStream()).load();
-            Meterian client = Meterian.build(configuration, environment, jenkinsLogger, args, clientJar);
+            Meterian client = Meterian.build(configuration, environment, jenkinsLogger, NO_JVM_ARGS, clientJar);
             client.prepare("--interactive=false", "--autofix");
 
             ClientRunner clientRunner =
@@ -103,20 +98,60 @@ public class MeterianClientAutofixFeatureTest {
         // Then: we should be able to see the expected output in the execution analysis output logs and the
         // reported vulnerabilities should be fixed, the changes committed to a branch and a pull request
         // created onto the respective remote Github repository of the project
-//        LocalGitClient gitClient = mock(LocalGitClient.class);
-//        verify(gitClient).applyCommitsToLocalRepo();
-//        verify(gitClient).pushBranchToRemoteRepo();
-//
-//        LocalGitHubClient localGitHubClient = mock(LocalGitHubClient.class);
-//        verify(localGitHubClient).createPullRequest(anyString());
+        verifyRunAnalysisLogs(logFile, new String[]{
+                "[meterian] Client successfully authorized",
+                "[meterian] Meterian Client v",
+                "[meterian] - autofix mode:      on",
+                "[meterian] Running autofix, 1 programs",
+                "[meterian] Autofix applied, will run the build again.",
+                "[meterian] Project information:",
+                "[meterian] JAVA scan -",
+                "MeterianHQ/autofix-sample-maven-upgrade.git",
+                "[meterian] Full report available at: ",
+                "[meterian] Build unsuccesful!",
+                "[meterian] Failed checks: [security]",
+                "[meterian] Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-29c4d26."
+        });
     }
 
-    private String performCloneGitRepo(String gitRepoRootFolder) throws IOException {
-        String githubProjectName = "autofix-sample-maven-upgrade";
+    private void verifyRunAnalysisLogs(File logFile, String[] specificLogLines) throws IOException {
+        String runAnalysisLogs = readRunAnalysisLogs(logFile.getPath());
+        for (String eachLogLine: specificLogLines) {
+            assertThat(runAnalysisLogs, containsString(eachLogLine));
+        }
+    }
+
+    private void deleteRemoteBranch(String branchName) throws IOException {
+        String[] gitCloneRepoCommand = new String[] {
+                "git",
+                "push",
+                "origin",
+                ":" + branchName
+        };
+
+        Shell.Options options = new Shell.Options().
+                onDirectory(new File(gitRepoWorkingFolder));
+        Shell.Task task = new Shell().exec(
+                gitCloneRepoCommand,
+                options
+        );
+        task.waitFor();
+
+        assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
+                task.exitValue(), task.exitValue(), is(equalTo(0)));
+
+    }
+
+    private String readRunAnalysisLogs(String pathToLog) throws IOException {
+        File logFile = new File(pathToLog);
+        return FileUtils.readFileToString(logFile);
+    }
+
+    private String performCloneGitRepo(String githubProjectName, final String githubOrgOrUserName, String gitRepoRootFolder) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
-                "git@github.com:MeterianHQ/" + githubProjectName + ".git"
+                "git@github.com:" + githubOrgOrUserName + "/" + githubProjectName + ".git"
         };
 
         Shell.Options options = new Shell.Options().

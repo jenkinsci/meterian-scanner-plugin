@@ -23,15 +23,15 @@ public class Shell {
     private static final Logger log = LoggerFactory.getLogger(Shell.class);
 
     public static class Options {
-    	private LineGobbler outputGobbler = NO_GOBBLER; 
-    	private LineGobbler errorGobbler = NO_GOBBLER;
-    	private File workingFolder = null;
-        private List<String> envps = new ArrayList<>();
-        
-        public Options withOutputGobbler(LineGobbler gobbler) {
-        	this.outputGobbler = gobbler;
-        	return this;
-        }
+       private LineGobbler outputGobbler = NO_GOBBLER;
+       private LineGobbler errorGobbler = NO_GOBBLER;
+       private File workingFolder = null;
+       private List<String> envps = new ArrayList<>();
+
+       public Options withOutputGobbler(LineGobbler gobbler) {
+           this.outputGobbler = gobbler;
+           return this;
+       }
         
         public Options withErrorGobbler(LineGobbler gobbler) {
         	this.errorGobbler = gobbler;
@@ -98,14 +98,13 @@ public class Shell {
         }
 
     }
-    
-    public static class Task {
 
+    public static class Task {
         public static final long DEFAULT_TIMEOUT_IN_SECONDS = 60L*5L;
 
         private final Process process;
         private final CountDownLatch ioLatch;
-        
+
         public Task(Process process) {
             this.process = process;
             this.ioLatch = new CountDownLatch(2);

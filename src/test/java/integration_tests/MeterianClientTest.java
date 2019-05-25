@@ -24,7 +24,7 @@ import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertThat;
 
-public class MeterianClientRunnerTest {
+public class MeterianClientTest {
 
     private static final String BASE_URL = "https://www.meterian.com";
     private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
@@ -41,28 +41,6 @@ public class MeterianClientRunnerTest {
         new File(gitRepoRootFolder).mkdir();
 
         gitRepoWorkingFolder = performCloneGitRepo(gitRepoRootFolder);
-    }
-
-    private String performCloneGitRepo(String gitRepoRootFolder) throws IOException {
-        String githubProjectName = "autofix-sample-maven-upgrade";
-        String[] gitCloneRepoCommand = new String[] {
-          "git",
-          "clone",
-          "https://github.com/MeterianHQ/" + githubProjectName + ".git"
-        };
-
-        Shell.Options options = new Shell.Options().
-                onDirectory(new File(gitRepoRootFolder));
-        Shell.Task task = new Shell().exec(
-                gitCloneRepoCommand,
-                options
-        );
-        task.waitFor();
-
-        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
-                task.exitValue(), task.exitValue(), is(equalTo(0)));
-
-        return Paths.get(gitRepoRootFolder, githubProjectName).toString();
     }
 
     @Test
@@ -99,7 +77,7 @@ public class MeterianClientRunnerTest {
         }
 
         // Then: we should be able to see the expecting output in the execution analysis output logs
-        String runAnalysisLogs = readBuildLogs(logFile.getPath());
+        String runAnalysisLogs = readRunAnalysisLogs(logFile.getPath());
         assertThat(runAnalysisLogs, containsString("[meterian] Client successfully authorized"));
         assertThat(runAnalysisLogs, containsString("[meterian] Meterian Client v"));
         assertThat(runAnalysisLogs, containsString("[meterian] Project information:"));
@@ -110,9 +88,31 @@ public class MeterianClientRunnerTest {
         assertThat(runAnalysisLogs, containsString("[meterian] Failed checks: [security]"));
     }
 
-    private String readBuildLogs(String pathToBuildLog) throws IOException {
-        File buildLogFile = new File(pathToBuildLog);
-        return FileUtils.readFileToString(buildLogFile);
+    private String performCloneGitRepo(String gitRepoRootFolder) throws IOException {
+        String githubProjectName = "autofix-sample-maven-upgrade";
+        String[] gitCloneRepoCommand = new String[] {
+                "git",
+                "clone",
+                "https://github.com/MeterianHQ/" + githubProjectName + ".git"
+        };
+
+        Shell.Options options = new Shell.Options().
+                onDirectory(new File(gitRepoRootFolder));
+        Shell.Task task = new Shell().exec(
+                gitCloneRepoCommand,
+                options
+        );
+        task.waitFor();
+
+        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
+                task.exitValue(), task.exitValue(), is(equalTo(0)));
+
+        return Paths.get(gitRepoRootFolder, githubProjectName).toString();
+    }
+
+    private String readRunAnalysisLogs(String pathToLog) throws IOException {
+        File logFile = new File(pathToLog);
+        return FileUtils.readFileToString(logFile);
     }
 
     private PrintStream nullPrintStream() {

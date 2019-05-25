@@ -19,6 +19,8 @@ import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.io.ClientDownloader;
 import io.meterian.jenkins.io.HttpClientFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;

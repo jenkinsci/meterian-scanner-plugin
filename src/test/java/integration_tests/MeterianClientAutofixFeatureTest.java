@@ -1,5 +1,6 @@
 package integration_tests;
 
+import com.meterian.common.system.LineGobbler;
 import com.meterian.common.system.OS;
 import com.meterian.common.system.Shell;
 import hudson.EnvVars;
@@ -18,6 +19,8 @@ import org.apache.http.client.HttpClient;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +34,8 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.*;
 
 public class MeterianClientAutofixFeatureTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MeterianClientAutofixFeatureTest.class);
 
     private static final String BASE_URL = "https://www.meterian.com";
     private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
@@ -46,7 +51,7 @@ public class MeterianClientAutofixFeatureTest {
 
         new File(gitRepoRootFolder).mkdir();
 
-        gitRepoWorkingFolder = performCloneGitRepo("autofix-sample-maven-upgrade", "MeterianHQ", gitRepoRootFolder);
+        gitRepoWorkingFolder = performCloneGitRepo("MeterianHQ", "autofix-sample-maven-upgrade", gitRepoRootFolder);
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         deleteRemoteBranch("fixed-by-meterian-29c4d26");
@@ -68,9 +73,9 @@ public class MeterianClientAutofixFeatureTest {
                 meterianGithubToken
         );
 
-        File logFile = File.createTempFile("jenkins-logger", Long.toString(System.nanoTime()));
+        File logFile = File.createTempFile("jenkins-logger-", Long.toString(System.nanoTime()));
         PrintStream jenkinsLogger = new PrintStream(logFile);
-        System.out.println("Jenkins log file: " + logFile.toPath().toString());
+        log.info("Jenkins log file: " + logFile.toPath().toString());
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         try {
@@ -129,12 +134,17 @@ public class MeterianClientAutofixFeatureTest {
                 ":" + branchName
         };
 
-        Shell.Options options = new Shell.Options().
-                onDirectory(new File(gitRepoWorkingFolder));
+        LineGobbler errorLineGobbler = (type, text) ->
+                log.error("{}> {}", type, text);
+
+        Shell.Options options = new Shell.Options()
+                .onDirectory(new File(gitRepoWorkingFolder))
+                .withErrorGobbler(errorLineGobbler);
         Shell.Task task = new Shell().exec(
                 gitCloneRepoCommand,
                 options
         );
+
         task.waitFor();
 
         assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
@@ -147,7 +157,7 @@ public class MeterianClientAutofixFeatureTest {
         return FileUtils.readFileToString(logFile);
     }
 
-    private String performCloneGitRepo(String githubProjectName, final String githubOrgOrUserName, String gitRepoRootFolder) throws IOException {
+    private String performCloneGitRepo(final String githubOrgOrUserName, String githubProjectName, String gitRepoRootFolder) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",

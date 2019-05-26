@@ -231,7 +231,7 @@ public class MeterianClientAutofixFeatureTest {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
-                "git@github.com:" + githubOrgOrUserName + "/" + githubProjectName + ".git"
+                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName) // only use ssh or git protocol and not https - uses ssh keys to authenticate
         };
 
         int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);

@@ -97,7 +97,7 @@ public class MeterianClientAutofixFeatureTest {
                     clientRunner,
                     jenkinsLogger
             );
-            MeterianExecutor executor = new StandardExecutor(mock(StepContext.class), clientRunner, autoFixFeature);
+            MeterianExecutor executor = new StandardExecutor(clientRunner, autoFixFeature);
             executor.run(client);
             jenkinsLogger.close();
 

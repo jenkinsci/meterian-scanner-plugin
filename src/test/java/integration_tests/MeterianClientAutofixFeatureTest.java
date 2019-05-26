@@ -136,7 +136,7 @@ public class MeterianClientAutofixFeatureTest {
         String[] gitConfigUserNameCommand = new String[] {
             "git",
             "config",
-            "--global",
+            "--local",
             "user.name",
             userName
         };
@@ -150,7 +150,7 @@ public class MeterianClientAutofixFeatureTest {
         String[] gitConfigUserEmailCommand = new String[] {
                 "git",
                 "config",
-                "--global",
+                "--local",
                 "user.email",
                 userEmail
         };

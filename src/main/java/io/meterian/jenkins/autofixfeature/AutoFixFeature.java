@@ -34,10 +34,18 @@ public class AutoFixFeature {
 
     public void execute() {
         try {
-            clientRunner.execute();
+            if (localGitClient.currentBranchHasNotBeenFixedYet()) {
+                clientRunner.execute();
+            } else {
+                String fixedBranchExistsMessage = String.format(
+                                LOCAL_BRANCH_ALREADY_EXISTS_WARNING, localGitClient.getFixedBranchNameForCurrentBranch()
+                );
+                log.warn(fixedBranchExistsMessage);
+                jenkinsLogger.println(fixedBranchExistsMessage);
+            }
 
             if (localGitClient.hasChanges()) {
-                localGitClient.applyCommitsToLocalRepo();
+                    localGitClient.applyCommitsToLocalRepo();
             } else {
                 log.warn(LocalGitClient.NO_CHANGES_FOUND_WARNING);
                 jenkinsLogger.println(LocalGitClient.NO_CHANGES_FOUND_WARNING);

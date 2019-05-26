@@ -180,11 +180,11 @@ public class MeterianClientAutofixFeatureTest {
     private void configureGitUserNameAndEmail(String userName, String userEmail) throws IOException {
         // git config --global user.name "Your Name"
         String[] gitConfigUserNameCommand = new String[] {
-            "git",
-            "config",
-            "--local",
-            "user.name",
-            userName
+                "git",
+                "config",
+                "--local",
+                "user.name",
+                userName
         };
 
         int exitCode = runCommand(gitConfigUserNameCommand, gitRepoWorkingFolder, log);
@@ -218,7 +218,7 @@ public class MeterianClientAutofixFeatureTest {
         int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
 
         assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
-               exitCode, exitCode, is(equalTo(0)));
+                exitCode, exitCode, is(equalTo(0)));
 
     }
 

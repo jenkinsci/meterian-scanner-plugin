@@ -94,7 +94,7 @@ public class MeterianClientTest {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
-                "https://github.com/MeterianHQ/" + githubProjectName + ".git"
+                String.format("https://github.com/MeterianHQ/%s.git", githubProjectName)
         };
 
         Shell.Options options = new Shell.Options().

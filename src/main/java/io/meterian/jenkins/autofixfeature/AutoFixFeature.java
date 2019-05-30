@@ -43,16 +43,26 @@ public class AutoFixFeature {
                 log.warn(fixedBranchExistsMessage);
                 jenkinsLogger.println(fixedBranchExistsMessage);
             }
+        } catch (Exception ex) {
+            log.error("Checking for branch or running the Meterian client was not successful due to: " + ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
 
+        try {
             if (localGitClient.hasChanges()) {
-                    localGitClient.applyCommitsToLocalRepo();
+                localGitClient.applyCommitsToLocalRepo();
             } else {
                 log.warn(LocalGitClient.NO_CHANGES_FOUND_WARNING);
                 jenkinsLogger.println(LocalGitClient.NO_CHANGES_FOUND_WARNING);
             }
+        } catch (Exception ex) {
+            log.error("Commits have not been applied due to the error: " + ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
 
-            localGitClient.pushBranchToRemoteRepo();
+        localGitClient.pushBranchToRemoteRepo();
 
+        try {
             LocalGitHubClient localGitHubClient = new LocalGitHubClient(
                     configuration.getGithubToken(),
                     localGitClient.getOrgOrUsername(),
@@ -60,8 +70,7 @@ public class AutoFixFeature {
                     jenkinsLogger
             );
             localGitHubClient.createPullRequest(localGitClient.getCurrentBranch());
-        } catch (
-                Exception ex) {
+        } catch (Exception ex) {
             log.error("Pull Request was not created, due to the error: " + ex.getMessage(), ex);
             throw new RuntimeException(ex);
         }

@@ -31,6 +31,33 @@
 		</license>
 	</licenses>
 
+	<developers>
+		<developer>
+			<id>bbossola</id>
+			<name>Bruno Bossola</name>
+			<email>bruno@meterian.com</email>
+		</developer>
+		<developer>
+			<id>neomatrix369</id>
+			<name>Mani Sarkar</name>
+			<email>sadhak001@gmail.com</email>
+		</developer>
+	</developers>
+
+	<repositories>
+		<repository>
+			<id>repo.jenkins-ci.org</id>
+			<url>https://repo.jenkins-ci.org/public/</url>
+		</repository>
+	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>repo.jenkins-ci.org</id>
+			<url>https://repo.jenkins-ci.org/public/</url>
+		</pluginRepository>
+	</pluginRepositories>
+
 	<!-- To host on @jenkinsci -->
 	<url>https://wiki.jenkins.io/display/JENKINS/Meterian-Project-Analyser</url>
 	<scm>

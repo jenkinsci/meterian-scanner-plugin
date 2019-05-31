@@ -10,7 +10,7 @@
 		<relativePath />
 	</parent>
 	<groupId>io.jenkins.plugins</groupId>
-	<artifactId>meterian-plugin</artifactId>
+	<artifactId>meterian-project-analyser</artifactId>
 	<version>0.1-SNAPSHOT</version>
 	<packaging>hpi</packaging>
 
@@ -21,7 +21,7 @@
 		<useBeta>true</useBeta>
 	</properties>
 
-	<name>Meterian Plugin</name>
+	<name>Meterian Project Analyser</name>
 	<description>A plugin to use Meterian seamlessly with Jenkins</description>
 
 	<licenses>
@@ -31,12 +31,15 @@
 		</license>
 	</licenses>
 
-	<!-- Assuming you want to host on @jenkinsci: <url>https://wiki.jenkins.io/display/JENKINS/TODO+Plugin</url>
-		<scm> <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
-		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
-		<url>https://github.com/jenkinsci/${project.artifactId}-plugin</url> </scm> -->
-	<dependencies>
+	<!-- To host on @jenkinsci -->
+	<url>https://wiki.jenkins.io/display/JENKINS/Meterian-Project-Analyser</url>
+	<scm>
+		<connection>scm:git:git://github.com/jenkinsci/${project.artifactId}.git</connection>
+		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}.git</developerConnection>
+		<url>https://github.com/jenkinsci/${project.artifactId}</url>
+	</scm>
 
+	<dependencies>
 		<dependency>
 			<groupId>org.jenkinsci.plugins</groupId>
 			<artifactId>pipeline-model-definition</artifactId>

@@ -41,6 +41,31 @@ This kicks off a full-fledged Jenkins instance and can be access via http://0.0.
 
 One or more jobs can be executed via this console. When these jobs are executed, and depending on the type of job, the Meterian Jenkins plugin configured with each of the jobs is triggered and the respective actions are executed.
 
+## Artifacts
+
+These are the two artifacts are created in the `target` folder:
+
+- `target/meterian-plugin.hpi`
+- `target/meterian-plugin.jar`
+
+The `meterian-plugin.hpi` is the artifact that will be installed as a Jenkins plugin, via the Jenkins, see https://jenkins.io/doc/book/managing/plugins/.
+
+## Configuration
+
+In order to run the tests locally we would need the following two environment variables populated with valid values or else the tests will fail:
+
+- `METERIAN_API_TOKEN` - this is generated via the Meterian dashboard (via https://www.meterian.com, you will need an account) 
+- `METERIAN_GITHUB_TOKEN` - this is the personal token generated from the machine user account created by yourself (learn more about machine user creation at [GitHub: developer guides | machine-users](https://developer.github.com/v3/guides/managing-deploy-keys/#machine-users)), follow the steps mentioned in the link
+
+### CircleCI configuration
+
+Ensure the above two environment variables are set via https://circleci.com/gh/[Your GitHub Org]/jenkins-plugin/edit#env-vars.
+
+In addition you would also need to add the SSH key associated with the Machine User created above to the CircleCI SSH keychain, see how that is done via https://circleci.com/docs/2.0/gh-bb-integration/#creating-a-machine-user.
+
+
+_**Note:** in general the above might not be needed if your CI/CD environment contains the necessary permission to perform `git push` related actions on the target repo you are analysing._
+
 ## Run Tests 
 
 ### All tests

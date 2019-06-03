@@ -14,15 +14,15 @@
        title="${%Test Connection}" progress="${%Testing...}"
        method="testConnection" with="url,token" />
 
-    <f:entry title="GitHub OAUTH token" field="githubToken" description="Enter a valid GitHub OAUTH token associated to your organisation or repository">
+    <f:entry title="Machine user" field="meterianMachineUser" description="Enter a valid GitHub user name or organisation that will act as your machine user or bot (as opposed to an account for a human user) [If left empty, defaults to: meterian-bot]">
       <f:textbox />
     </f:entry>
 
-    <f:entry title="Machine user" field="meterianMachineUser" description="Enter a valid GitHub user name or organisation that will act as your machine user or bot (as opposed to an account for a human user)">
+    <f:entry title="Machine user email address" field="meterianMachineUserEmail" description="Enter a valid email address associated with the GitHub user name or organisation that will act as your machine user or bot (as opposed to an account for a human user) [If left empty, defaults to: bot.github@meterian.io]">
       <f:textbox />
     </f:entry>
 
-    <f:entry title="Machine user email address" field="meterianMachineUserEmail" description="Enter a valid email address associated with the GitHub user name or organisation that will act as your machine user or bot (as opposed to an account for a human user)">
+    <f:entry title="GitHub Machine user token" field="githubToken" description="Enter a valid GitHub machine user token associated with the above Machine user">
       <f:textbox />
     </f:entry>
 

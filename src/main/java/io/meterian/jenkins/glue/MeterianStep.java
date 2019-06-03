@@ -89,7 +89,7 @@ public class MeterianStep extends Step {
             } else {
                 AutoFixFeature autoFixFeature = new AutoFixFeature(
                         configuration,
-                        environment.get("WORKSPACE"),
+                        environment,
                         clientRunner,
                         jenkinsLogger
                 );

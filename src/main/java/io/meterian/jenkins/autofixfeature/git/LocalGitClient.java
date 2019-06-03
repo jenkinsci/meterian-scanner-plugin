@@ -26,15 +26,19 @@ public class LocalGitClient {
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    public static final String METERIAN_GITHUB_USER = "meterian-bot";
-    public static final String METERIAN_GITHUB_EMAIL = "bot.github@meterian.io";
-    private static final String METERIAN_COMMIT_MESSAGE = String.format("Fixes applied via %s", METERIAN_GITHUB_USER);
+    private static final String DEFAULT_METERIAN_MACHINE_USER = "meterian-bot";
+    private static final String DEFAULT_METERIAN_MACHINE_USER_EMAIL = "bot.github@meterian.io";
 
     private final Git git;
+    private final String meterianMachineUser;
+    private final String meterianMachineUserEmail;
     private PrintStream jenkinsLogger;
     private String currentBranch;
 
-    public LocalGitClient(String pathToRepo, PrintStream jenkinsLogger) {
+    public LocalGitClient(String pathToRepo, String meterianMachineUser, String meterianMachineUserEmail, PrintStream jenkinsLogger) {
+        this.meterianMachineUser = meterianMachineUser;
+        this.meterianMachineUserEmail = meterianMachineUserEmail;
+
         this.jenkinsLogger = jenkinsLogger;
 
         log.info("Workspace (path to the git repo): " + pathToRepo);
@@ -45,6 +49,20 @@ public class LocalGitClient {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    public String getMeterianMachineUser() {
+        if ((meterianMachineUser == null) || meterianMachineUser.trim().isEmpty()) {
+            return DEFAULT_METERIAN_MACHINE_USER;
+        }
+        return meterianMachineUser;
+    }
+
+    public String getMeterianMachineUserEmail() {
+        if ((meterianMachineUserEmail == null) || meterianMachineUserEmail.trim().isEmpty()) {
+            return DEFAULT_METERIAN_MACHINE_USER_EMAIL;
+        }
+        return meterianMachineUserEmail;
     }
 
     public String getRepositoryName() throws GitAPIException {
@@ -64,12 +82,16 @@ public class LocalGitClient {
             addChangedFileToBranch(unCommittedFiles);
 
             log.info("Applying commits");
-            commitChanges(METERIAN_GITHUB_USER,
-                    METERIAN_GITHUB_USER,
-                    METERIAN_GITHUB_EMAIL,
-                    METERIAN_COMMIT_MESSAGE);
+            commitChanges(getMeterianMachineUser(),
+                    getMeterianMachineUser(),
+                    getMeterianMachineUserEmail(),
+                    getMeterianCommitMessage());
 
             log.info("Finished committing changes to branch " + currentBranch);
+    }
+
+    private String getMeterianCommitMessage() {
+        return String.format("Fixes applied via %s", getMeterianMachineUser());
     }
 
     public String getOrgOrUsername() throws GitAPIException {
@@ -150,8 +172,8 @@ public class LocalGitClient {
         if (iterator.hasNext()) {
             RevCommit currentCommit = iterator.next();
             PersonIdent author = currentCommit.getAuthorIdent();
-            return author.getName().equalsIgnoreCase(METERIAN_GITHUB_USER) &&
-                    author.getEmailAddress().equalsIgnoreCase(METERIAN_GITHUB_EMAIL);
+            return author.getName().equalsIgnoreCase(getMeterianMachineUser()) &&
+                    author.getEmailAddress().equalsIgnoreCase(getMeterianMachineUserEmail());
         }
         return false;
     }
@@ -275,7 +297,9 @@ public class LocalGitClient {
 
     private boolean byLocalFixedBranchName(Ref branch) {
         try {
-            return branch.getName().contains(FIXED_BY_METERIAN + "-" + getCurrentBranchSHA());
+            return branch.getName().contains(
+                    String.format("%s-%s", FIXED_BY_METERIAN, getCurrentBranchSHA())
+            );
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }

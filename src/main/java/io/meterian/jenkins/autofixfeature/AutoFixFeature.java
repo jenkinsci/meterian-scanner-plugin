@@ -1,5 +1,6 @@
 package io.meterian.jenkins.autofixfeature;
 
+import hudson.EnvVars;
 import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.autofixfeature.github.LocalGitHubClient;
 import io.meterian.jenkins.glue.MeterianPlugin;
@@ -22,14 +23,18 @@ public class AutoFixFeature {
     private MeterianPlugin.Configuration configuration;
 
     public AutoFixFeature(MeterianPlugin.Configuration configuration,
-                          String workspace,
+                          EnvVars environment,
                           ClientRunner clientRunner,
                           PrintStream jenkinsLogger) {
         this.configuration = configuration;
         this.clientRunner = clientRunner;
         this.jenkinsLogger = jenkinsLogger;
 
-        localGitClient = new LocalGitClient(workspace, jenkinsLogger);
+        localGitClient = new LocalGitClient(
+                environment.get("WORKSPACE"),
+                environment.get("METERIAN_MACHINE_USER"),
+                environment.get("METERIAN_MACHINE_USER_EMAIL"),
+                jenkinsLogger);
     }
 
     public void execute() {

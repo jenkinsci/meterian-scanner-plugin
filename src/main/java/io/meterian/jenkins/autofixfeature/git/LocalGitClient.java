@@ -41,7 +41,7 @@ public class LocalGitClient {
 
         this.jenkinsLogger = jenkinsLogger;
 
-        log.info("Workspace (path to the git repo): " + pathToRepo);
+        log.info(String.format("Workspace (path to the git repo): %s", pathToRepo));
         try {
             git = Git.open(new File(pathToRepo));
             currentBranch = getCurrentBranch();
@@ -78,7 +78,7 @@ public class LocalGitClient {
             createBranch();
 
             Set<String> unCommittedFiles = listOfChanges();
-            log.info("Files changed: " + Arrays.toString(unCommittedFiles.toArray()));
+            log.info(String.format("Files changed: %s", Arrays.toString(unCommittedFiles.toArray())));
             addChangedFileToBranch(unCommittedFiles);
 
             log.info("Applying commits");
@@ -87,7 +87,7 @@ public class LocalGitClient {
                     getMeterianMachineUserEmail(),
                     getMeterianCommitMessage());
 
-            log.info("Finished committing changes to branch " + currentBranch);
+            log.info(String.format("Finished committing changes to branch %s", currentBranch));
     }
 
     private String getMeterianCommitMessage() {
@@ -130,7 +130,7 @@ public class LocalGitClient {
                 log.debug("Current branch was not created by Meterian");
             }
         } catch (Exception ex) {
-            String couldNotPushDueToError = "Could not push branch " + currentBranch + " to remote repo due to error: " + ex.getMessage();
+            String couldNotPushDueToError = String.format("Could not push branch %s to remote repo due to error: %s", currentBranch, ex.getMessage());
             log.debug(couldNotPushDueToError);
             jenkinsLogger.println(couldNotPushDueToError);
 
@@ -256,7 +256,7 @@ public class LocalGitClient {
     }
 
     private DirCache addChangedFileToBranch(Set<String> fileNames) throws GitAPIException {
-        log.info("Adding files to branch: " + fileNames);
+        log.info(String.format("Adding files to branch: %s", fileNames));
 
         DirCache result = null;
         for (String eachFile : fileNames) {
@@ -272,7 +272,7 @@ public class LocalGitClient {
                                     String committerName,
                                     String email,
                                     String commitMessage) throws GitAPIException {
-        log.info("Committing changes from author: " + authorName);
+        log.info(String.format("Committing changes from author: %s", authorName));
         return git
                 .commit()
                 .setAuthor(authorName, email)

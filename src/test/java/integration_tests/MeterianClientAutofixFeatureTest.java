@@ -67,8 +67,8 @@ public class MeterianClientAutofixFeatureTest {
                 BASE_URL,
                 meterianAPIToken,
                 NO_JVM_ARGS,
-                meterianGithubToken
-        );
+                meterianGithubToken,
+                meterianMachineUser, meterianMachineUserEmail);
     }
 
     @Test

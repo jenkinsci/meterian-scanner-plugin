@@ -32,6 +32,7 @@ public class MeterianClientTest {
     private static final String NO_JVM_ARGS = "";
 
     private String gitRepoWorkingFolder;
+    private EnvVars environment;
 
     @Before
     public void setup() throws IOException {
@@ -45,22 +46,33 @@ public class MeterianClientTest {
 
     @Test
     public void givenConfiguration_whenMeterianClientIsRun_thenItShouldNotThrowException() throws IOException {
+        File logFile = File.createTempFile("jenkins-logger", Long.toString(System.nanoTime()));
+        PrintStream jenkinsLogger = new PrintStream(logFile);
+
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
-        EnvVars environment = getEnvironment();
+        environment = getEnvironment();
         String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
         assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
         String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
         assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
 
+        String meterianMachineUser = getMeterianMachineUser();
+        if ((meterianMachineUser == null) || meterianMachineUser.trim().isEmpty()) {
+            jenkinsLogger.println("DEFAULT_METERIAN_MACHINE_USER has not been set, tests will be run using the default value assumed for this environment variable");
+        }
+
+        String meterianMachineUserEmail = getMeterianMachineUserEmail();
+        if ((meterianMachineUserEmail == null) || meterianMachineUserEmail.trim().isEmpty()) {
+            jenkinsLogger.println("DEFAULT_METERIAN_MACHINE_USER_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
+        }
+
         MeterianPlugin.Configuration configuration = new MeterianPlugin.Configuration(
                 BASE_URL,
                 meterianAPIToken,
                 NO_JVM_ARGS,
-                meterianGithubToken
-        );
-
-        File logFile = File.createTempFile("jenkins-logger", Long.toString(System.nanoTime()));
-        PrintStream jenkinsLogger = new PrintStream(logFile);
+                meterianGithubToken,
+                meterianMachineUser,
+                meterianMachineUserEmail);
 
         String args = "";
 
@@ -156,5 +168,13 @@ public class MeterianClientTest {
         }
         environment.put("WORKSPACE", gitRepoWorkingFolder);
         return environment;
+    }
+
+    private String getMeterianMachineUser() {
+        return environment.get("METERIAN_MACHINE_USER", "meterian-bot");
+    }
+
+    private String getMeterianMachineUserEmail() {
+        return environment.get("METERIAN_MACHINE_USER_EMAIL", "bot.github@meterian.io");
     }
 }

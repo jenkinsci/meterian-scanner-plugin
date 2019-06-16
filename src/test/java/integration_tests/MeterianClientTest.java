@@ -19,6 +19,8 @@ import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.io.ClientDownloader;
 import io.meterian.jenkins.io.HttpClientFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;
@@ -46,7 +48,6 @@ public class MeterianClientTest {
     @Test
     public void givenConfiguration_whenMeterianClientIsRun_thenItShouldNotThrowException() throws IOException {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
-
         EnvVars environment = getEnvironment();
         String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
         assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());

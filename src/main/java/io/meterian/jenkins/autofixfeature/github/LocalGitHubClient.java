@@ -77,10 +77,12 @@ public class LocalGitHubClient {
                 Repository repository = getRepositoryFrom(orgOrUserName, repoName);
                 String title = "[meterian] Fix for vulnerable dependencies";
                 String body = "Dependencies in project configuration file has been fixed";
-                PullRequestMarker head = new PullRequestMarker().setLabel(
-                        String.format("%s:%s", orgOrUserName, branchName)
-                );
-                PullRequestMarker base = new PullRequestMarker().setLabel("master");
+                PullRequestMarker head = new PullRequestMarker()
+                        .setRef(branchName)
+                        .setLabel(String.format("%s:%s", orgOrUserName, branchName));
+                PullRequestMarker base = new PullRequestMarker()
+                                .setRef("master")
+                                .setLabel("master");
                 PullRequest pullRequest = new PullRequest()
                         .setTitle(title)
                         .setHead(head)

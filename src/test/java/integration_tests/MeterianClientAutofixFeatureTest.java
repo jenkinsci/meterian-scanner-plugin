@@ -6,7 +6,6 @@ import com.meterian.common.system.Shell;
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
-import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
@@ -56,19 +55,36 @@ public class MeterianClientAutofixFeatureTest {
     private PrintStream jenkinsLogger;
 
     @Before
-    public void setup() {
+    public void setup() throws IOException {
+        logFile = File.createTempFile("jenkins-logger-", Long.toString(System.nanoTime()));
+        jenkinsLogger = new PrintStream(logFile);
+        log.info("Jenkins log file: " + logFile.toPath().toString());
+
         environment = getEnvironment();
         String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
         assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
-        String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
-        assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
+
+        String meterianMachineUser = getMeterianMachineUser();
+        if ((meterianMachineUser == null) || meterianMachineUser.trim().isEmpty()) {
+            jenkinsLogger.println("METERIAN_MACHINE_USER has not been set, tests will be run using the default value assumed for this environment variable");
+        }
+
+        String meterianMachineUserEmail = getMeterianMachineUserEmail();
+        if ((meterianMachineUserEmail == null) || meterianMachineUserEmail.trim().isEmpty()) {
+            jenkinsLogger.println("METERIAN_MACHINE_USER_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
+        }
+
+        String meterianMachineUserToken = environment.get("METERIAN_MACHINE_USER_TOKEN");
+        assertThat("METERIAN_MACHINE_USER_TOKEN has not been set, cannot run test without a valid value", meterianMachineUserToken, notNullValue());
 
         configuration = new MeterianPlugin.Configuration(
                 BASE_URL,
                 meterianAPIToken,
                 NO_JVM_ARGS,
-                meterianGithubToken,
-                meterianMachineUser, meterianMachineUserEmail);
+                meterianMachineUser,
+                meterianMachineUserEmail,
+                meterianMachineUserToken
+        );
     }
 
     @Test
@@ -79,10 +95,8 @@ public class MeterianClientAutofixFeatureTest {
         performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder);
 
         // Deleting remote branch automatically closes any Pull Request attached to it
-        configureGitUserNameAndEmail(LocalGitClient.METERIAN_GITHUB_USER, LocalGitClient.METERIAN_GITHUB_EMAIL);
+        configureGitUserNameAndEmail(getMeterianMachineUser(), getMeterianMachineUserEmail());
         deleteRemoteBranch("fixed-by-meterian-29c4d26");
-
-        createLoggers();
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         runMeterianClientAndReportAnalysis(jenkinsLogger);
@@ -113,7 +127,6 @@ public class MeterianClientAutofixFeatureTest {
         // a remote branch called fixed-by-meterian-29c4d26 already exists
         // a pull request attached to remote branch fixed-by-meterian-29c4d26 also exists
         // and the current branch is fixed-by-meterian-29c4d26
-        createLoggers();
 
         // When: meterian client is run on the current branch (which has already been fixed before)
         runMeterianClientAndReportAnalysis(jenkinsLogger);
@@ -140,12 +153,6 @@ public class MeterianClientAutofixFeatureTest {
         });
     }
 
-    private void createLoggers() throws IOException {
-        logFile = File.createTempFile("jenkins-logger-", Long.toString(System.nanoTime()));
-        jenkinsLogger = new PrintStream(logFile);
-        log.info("Jenkins log file: " + logFile.toPath().toString());
-    }
-
     private void runMeterianClientAndReportAnalysis(PrintStream jenkinsLogger) {
         try {
             File clientJar = new ClientDownloader(newHttpClient(), BASE_URL, nullPrintStream()).load();
@@ -157,7 +164,7 @@ public class MeterianClientAutofixFeatureTest {
 
             AutoFixFeature autoFixFeature = new AutoFixFeature(
                     configuration,
-                    environment.get("WORKSPACE"),
+                    environment,
                     clientRunner,
                     jenkinsLogger
             );
@@ -288,6 +295,14 @@ public class MeterianClientAutofixFeatureTest {
                 // TODO Auto-generated method stub
                 return null;
             }});
+    }
+
+    private String getMeterianMachineUser() {
+        return getOSEnvSettings().get("METERIAN_MACHINE_USER");
+    }
+
+    private String getMeterianMachineUserEmail() {
+        return getOSEnvSettings().get("METERIAN_MACHINE_USER_EMAIL");
     }
 
     private EnvVars getEnvironment() {

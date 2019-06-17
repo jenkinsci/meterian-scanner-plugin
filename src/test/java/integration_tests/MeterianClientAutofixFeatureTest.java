@@ -133,7 +133,7 @@ public class MeterianClientAutofixFeatureTest {
                 "[meterian] Full report available at: ",
                 "[meterian] Build unsuccesful!",
                 "[meterian] Failed checks: [security]",
-                "No changes found (no fixed generated), no branch to push to the remote repo.",
+                "No changes found (no fixes generated), no branch to push to the remote repo.",
                 "[meterian] Warning: fixed-by-meterian-29c4d26 already exists in the remote repo, skipping the remote branch creation process.",
                 "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-29c4d26",
                 "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point)."

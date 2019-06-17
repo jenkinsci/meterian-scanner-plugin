@@ -34,5 +34,6 @@ work*/
 .settings
 
 .idea/
+*.iml
 meterian-plugin.iml
 .DS_Store

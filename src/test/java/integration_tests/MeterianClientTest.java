@@ -19,8 +19,6 @@ import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.io.ClientDownloader;
 import io.meterian.jenkins.io.HttpClientFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;
@@ -42,7 +40,7 @@ public class MeterianClientTest {
 
         new File(gitRepoRootFolder).mkdir();
 
-        gitRepoWorkingFolder = performCloneGitRepo(gitRepoRootFolder);
+        gitRepoWorkingFolder = performCloneGitRepo("MeterianHQ", "autofix-sample-maven-upgrade", gitRepoRootFolder);
     }
 
     @Test
@@ -89,12 +87,11 @@ public class MeterianClientTest {
         assertThat(runAnalysisLogs, containsString("[meterian] Failed checks: [security]"));
     }
 
-    private String performCloneGitRepo(String gitRepoRootFolder) throws IOException {
-        String githubProjectName = "autofix-sample-maven-upgrade";
+    private String performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String gitRepoRootFolder) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
-                "https://github.com/MeterianHQ/" + githubProjectName + ".git"
+                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName) // only use ssh or git protocol and not https - uses ssh keys to authenticate
         };
 
         Shell.Options options = new Shell.Options().

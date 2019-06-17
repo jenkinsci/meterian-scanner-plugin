@@ -133,7 +133,7 @@ public class MeterianClientAutofixFeatureTest {
                 "[meterian] Full report available at: ",
                 "[meterian] Build unsuccesful!",
                 "[meterian] Failed checks: [security]",
-                "No changes found (no fixed generated), no branch to push to the remote repo.",
+                "No changes found (no fixes generated), no branch to push to the remote repo.",
                 "[meterian] Warning: fixed-by-meterian-29c4d26 already exists in the remote repo, skipping the remote branch creation process.",
                 "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-29c4d26",
                 "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point)."
@@ -180,11 +180,11 @@ public class MeterianClientAutofixFeatureTest {
     private void configureGitUserNameAndEmail(String userName, String userEmail) throws IOException {
         // git config --global user.name "Your Name"
         String[] gitConfigUserNameCommand = new String[] {
-            "git",
-            "config",
-            "--local",
-            "user.name",
-            userName
+                "git",
+                "config",
+                "--local",
+                "user.name",
+                userName
         };
 
         int exitCode = runCommand(gitConfigUserNameCommand, gitRepoWorkingFolder, log);
@@ -218,7 +218,7 @@ public class MeterianClientAutofixFeatureTest {
         int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
 
         assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
-               exitCode, exitCode, is(equalTo(0)));
+                exitCode, exitCode, is(equalTo(0)));
 
     }
 
@@ -231,7 +231,7 @@ public class MeterianClientAutofixFeatureTest {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
-                "git@github.com:" + githubOrgOrUserName + "/" + githubProjectName + ".git"
+                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName) // only use ssh or git protocol and not https - uses ssh keys to authenticate
         };
 
         int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);

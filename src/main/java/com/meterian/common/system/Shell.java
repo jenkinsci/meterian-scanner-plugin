@@ -81,7 +81,7 @@ public class Shell {
 
         @Override
         public String toString() {
-            return "[output=" + toString(outputGobbler) + ", error=" + toString(errorGobbler) + ", folder=" + workingFolder + ", envp=" + envps + "]";
+            return String.format("[output=%s, error=%s, folder=%s, envp=%s]", toString(outputGobbler), toString(errorGobbler), workingFolder, envps);
         }
 
         private String toString(LineGobbler gobbler) {
@@ -162,7 +162,7 @@ public class Shell {
 
     public Task exec(String commands[], Options options) throws IOException {
         if (log.isDebugEnabled())
-            log.debug("Running shell commmand {} with options {}",Arrays.asList(commands), options);
+            log.debug("Running shell command {} with options {}",Arrays.asList(commands), options);
 
         Process process;
         if (options.workingFolder == null)

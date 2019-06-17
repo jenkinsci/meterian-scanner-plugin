@@ -40,7 +40,7 @@ public class StreamGobbler implements Runnable {
                 reader.close();
             }
         } catch (IOException ex) {
-             log.warn("Unexpected exception gobbling " + type + " stream", ex);
+             log.warn(String.format("Unexpected exception gobbling %s stream", type), ex);
         } finally {
             latch.countDown();
             // mdcReset();

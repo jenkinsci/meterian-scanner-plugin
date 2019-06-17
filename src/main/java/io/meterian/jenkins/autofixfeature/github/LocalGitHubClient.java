@@ -116,8 +116,9 @@ public class LocalGitHubClient {
             List<PullRequest> pullRequestsFound = pullRequestService.getPullRequests(repository, "open");
 
             if (pullRequestsFound.size() > 0) {
+                String targetBranchName = pullRequestsFound.get(0).getHead().getRef();
                 String foundPullRequestWarning = String.format(
-                        FOUND_PULL_REQUEST_WARNING, pullRequestsFound.size(), orgOrUserName, repoName, branchName
+                        FOUND_PULL_REQUEST_WARNING, pullRequestsFound.size(), orgOrUserName, repoName, targetBranchName
                 );
                 log.warn(foundPullRequestWarning);
                 jenkinsLogger.println(foundPullRequestWarning);

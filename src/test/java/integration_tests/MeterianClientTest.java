@@ -70,9 +70,10 @@ public class MeterianClientTest {
                 BASE_URL,
                 meterianAPIToken,
                 NO_JVM_ARGS,
-                meterianGithubToken,
                 meterianGithubUser,
-                meterianGithubEmail);
+                meterianGithubEmail,
+                meterianGithubToken
+        );
 
         String args = "";
 

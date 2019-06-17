@@ -26,9 +26,6 @@ public class LocalGitClient {
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    private static final String DEFAULT_METERIAN_GITHUB_USER = "meterian-bot";            // Machine User name, when user does not set one
-    private static final String DEFAULT_METERIAN_GITHUB_EMAIL = "bot.github@meterian.io"; // Email associated with the Machine User, when user does not set one
-
     private final Git git;
     private final String meterianGithubUser;  // Machine User name
     private final String meterianGithubEmail; // Email associated with the Machine User
@@ -54,20 +51,6 @@ public class LocalGitClient {
         }
     }
 
-    public String getMeterianGithubUser() {
-        if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
-            return DEFAULT_METERIAN_GITHUB_USER;
-        }
-        return meterianGithubUser;
-    }
-
-    public String getMeterianGithubEmail() {
-        if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
-            return DEFAULT_METERIAN_GITHUB_EMAIL;
-        }
-        return meterianGithubEmail;
-    }
-
     public String getRepositoryName() throws GitAPIException {
         List<RemoteConfig> remoteConfigList = git.remoteList().call();
         if ((remoteConfigList != null) && (remoteConfigList.size() > 0)) {
@@ -85,16 +68,16 @@ public class LocalGitClient {
             addChangedFileToBranch(unCommittedFiles);
 
             log.info("Applying commits");
-            commitChanges(getMeterianGithubUser(),
-                    getMeterianGithubUser(),
-                    getMeterianGithubEmail(),
+            commitChanges(meterianGithubUser,
+                    meterianGithubUser,
+                    meterianGithubEmail,
                     getMeterianCommitMessage());
 
             log.info(String.format("Finished committing changes to branch %s", currentBranch));
     }
 
     private String getMeterianCommitMessage() {
-        return String.format("Fixes applied via %s", getMeterianGithubUser());
+        return String.format("Fixes applied via %s", meterianGithubUser);
     }
 
     public String getOrgOrUsername() throws GitAPIException {
@@ -175,8 +158,8 @@ public class LocalGitClient {
         if (iterator.hasNext()) {
             RevCommit currentCommit = iterator.next();
             PersonIdent author = currentCommit.getAuthorIdent();
-            return author.getName().equalsIgnoreCase(getMeterianGithubUser()) &&
-                    author.getEmailAddress().equalsIgnoreCase(getMeterianGithubEmail());
+            return author.getName().equalsIgnoreCase(meterianGithubUser) &&
+                    author.getEmailAddress().equalsIgnoreCase(meterianGithubEmail);
         }
         return false;
     }

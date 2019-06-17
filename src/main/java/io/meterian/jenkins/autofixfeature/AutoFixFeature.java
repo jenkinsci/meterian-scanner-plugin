@@ -34,16 +34,13 @@ public class AutoFixFeature {
 
     public void execute() {
         try {
-            if (localGitClient.currentBranchWasNotCreatedByMeterianClient() &&
-                    localGitClient.otherMeterianLocalBranchesDoNotExist()) {
-                log.info(localGitClient.getCurrentBranch() + " does not exist in local repo");
-                clientRunner.execute();
+            clientRunner.execute();
+
+            if (localGitClient.hasChanges()) {
                 localGitClient.applyCommitsToLocalRepo();
             } else {
-                String branchAlreadyExistsWarning =
-                        String.format(LOCAL_BRANCH_ALREADY_EXISTS_WARNING, localGitClient.getCurrentBranch());
-                log.warn(branchAlreadyExistsWarning);
-                jenkinsLogger.println(branchAlreadyExistsWarning);
+                log.warn(LocalGitClient.NO_CHANGES_FOUND_WARNING);
+                jenkinsLogger.println(LocalGitClient.NO_CHANGES_FOUND_WARNING);
             }
 
             localGitClient.pushBranchToRemoteRepo();

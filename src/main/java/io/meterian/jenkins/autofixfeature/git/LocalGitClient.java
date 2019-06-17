@@ -15,60 +15,25 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class LocalGitClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitClient.class);
 
-    private static final String NO_CHANGES_FOUND_WARNING = "No changes found (no fixed generated), no branch to push to the remote repo.";
+    public static final String NO_CHANGES_FOUND_WARNING = "No changes found (no fixed generated), no branch to push to the remote repo.";
+
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    private static final String METERIAN_BOT = "meterian-bot";
-    private static final String METERIAN_BOT_EMAIL = "bot.github@meterian.io";
+    public static final String METERIAN_BOT = "meterian-bot";
+    public static final String METERIAN_BOT_EMAIL = "bot.github@meterian.io";
     private static final String METERIAN_COMMIT_MESSAGE = "Fixes applied via " + METERIAN_BOT;
 
     private final Git git;
     private PrintStream jenkinsLogger;
     private String currentBranch;
-
-    public static void main(String[] args) throws GitAPIException, IOException {
-//        String pathToRepo = "/path/to/meterian/jenkins-plugin/work/workspace/TestMeterianSimplePipeline-autofix";
-        String pathToRepo = "path/to/meterian/jenkins-plugin/work/workspace/ultiPipeline-autofix_master-R7BPEVOKUIKKVF72USMTYF2U6Z2VP6KEXA3A7LEZGIUW4BAN6PLA";
-
-        PrintStream noOpStream = new PrintStream(new OutputStream() {
-            public void write(int b) {
-                // NO-OP
-            }
-        });
-
-        LocalGitClient localGitClient = new LocalGitClient(pathToRepo, noOpStream);
-
-        if (localGitClient.hasChanges()) {
-            if (localGitClient.currentBranchWasNotCreatedByMeterianClient() &&
-                    localGitClient.otherMeterianLocalBranchesDoNotExist()) {
-                System.out.println(localGitClient.createBranch());
-
-                Set<String> unCommittedFiles = localGitClient.listOfChanges();
-                System.out.println(unCommittedFiles);
-
-                System.out.println(localGitClient.addChangedFileToBranch(unCommittedFiles));
-                System.out.println(localGitClient.commitChanges(
-                            METERIAN_BOT,
-                            METERIAN_BOT,
-                            METERIAN_BOT_EMAIL,
-                            METERIAN_COMMIT_MESSAGE
-                        )
-                );
-            }
-            localGitClient.pushBranchToRemoteRepo();
-        }
-    }
 
     public LocalGitClient(String pathToRepo, PrintStream jenkinsLogger) {
         this.jenkinsLogger = jenkinsLogger;
@@ -93,7 +58,6 @@ public class LocalGitClient {
     }
 
     public void applyCommitsToLocalRepo() throws GitAPIException, IOException {
-        if (hasChanges()) {
             createBranch();
 
             Set<String> unCommittedFiles = listOfChanges();
@@ -107,10 +71,6 @@ public class LocalGitClient {
                     METERIAN_COMMIT_MESSAGE);
 
             log.info("Finished committing changes to branch " + currentBranch);
-        } else {
-            log.warn(NO_CHANGES_FOUND_WARNING);
-            jenkinsLogger.println(NO_CHANGES_FOUND_WARNING);
-        }
     }
 
     public boolean otherMeterianLocalBranchesDoNotExist() throws GitAPIException {
@@ -125,8 +85,8 @@ public class LocalGitClient {
 
     public String getOrgOrUsername() throws GitAPIException {
         String[] fullRepoName = getRepositoryName().split("/");
-        if ((fullRepoName != null) && (fullRepoName.length > 0)) {
-            return fullRepoName[0];
+        if (fullRepoName.length > 0) {
+            return fullRepoName[0].isEmpty() ? fullRepoName[1] : fullRepoName[0];
         }
 
         return "";
@@ -139,23 +99,31 @@ public class LocalGitClient {
     }
 
     public void pushBranchToRemoteRepo() throws GitAPIException {
-        log.debug("Checking if current branch was created by Meterian");
-        if (currentBranchWasCreatedByMeterianClient()) {
-            log.info(String.format("Checking if the branch %s to be created already exists in remote repo", currentBranch));
-            git.fetch()
-                    .setRemoveDeletedRefs(true)
-                    .call();
-            if (meterianRemoteBranchDoesNotExists()) {
-                log.info(String.format("Branch %s does not exist in remote repo, started pushing branch", currentBranch));
-                git.push().call();
-                log.info("Finished pushing branch to remote repo");
+        try {
+            log.debug("Checking if current branch was created by Meterian");
+            if (currentBranchWasCreatedByMeterianClient()) {
+                log.info(String.format("Checking if the branch %s to be created already exists in remote repo", currentBranch));
+                git.fetch()
+                        .setRemoveDeletedRefs(true)
+                        .call();
+                if (meterianRemoteBranchDoesNotExists()) {
+                    log.info(String.format("Branch %s does not exist in remote repo, started pushing branch", currentBranch));
+                    git.push().call();
+                    log.info("Finished pushing branch to remote repo");
+                } else {
+                    String branchAlreadyExistsWarning = String.format(REMOTE_BRANCH_ALREADY_EXISTS_WARNING, currentBranch);
+                    log.warn(branchAlreadyExistsWarning);
+                    jenkinsLogger.println(branchAlreadyExistsWarning);
+                }
             } else {
-                String branchAlreadyExistsWarning = String.format(REMOTE_BRANCH_ALREADY_EXISTS_WARNING, currentBranch);
-                log.warn(branchAlreadyExistsWarning);
-                jenkinsLogger.println(branchAlreadyExistsWarning);
+                log.debug("Current branch was not created by Meterian");
             }
-        } else {
-            log.debug("Current branch was not created by Meterian");
+        } catch (Exception ex) {
+            String couldNotPushDueToError = "Could not push branch " + currentBranch + " to remote repo due to error: " + ex.getMessage();
+            log.debug(couldNotPushDueToError);
+            jenkinsLogger.println(couldNotPushDueToError);
+
+            throw new RuntimeException(ex);
         }
     }
 
@@ -189,8 +157,9 @@ public class LocalGitClient {
 
     private boolean currentBranchWasCreatedByMeterianClient() throws GitAPIException {
         Iterable<RevCommit> logs = git.log().call();
-        if (logs.iterator().hasNext()) {
-            RevCommit currentCommit = logs.iterator().next();
+        Iterator<RevCommit> iterator = logs.iterator();
+        if (iterator.hasNext()) {
+            RevCommit currentCommit = iterator.next();
             PersonIdent author = currentCommit.getAuthorIdent();
             return author.getName().equalsIgnoreCase(METERIAN_BOT) &&
                     author.getEmailAddress().equalsIgnoreCase(METERIAN_BOT_EMAIL);
@@ -223,7 +192,7 @@ public class LocalGitClient {
                 .getModified();
     }
 
-    private boolean hasChanges() throws GitAPIException {
+    public boolean hasChanges() throws GitAPIException {
         return !git.status()
                 .call()
                 .isClean();

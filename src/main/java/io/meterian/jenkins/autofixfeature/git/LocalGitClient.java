@@ -26,9 +26,9 @@ public class LocalGitClient {
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    public static final String METERIAN_BOT = "meterian-bot";
-    public static final String METERIAN_BOT_EMAIL = "bot.github@meterian.io";
-    private static final String METERIAN_COMMIT_MESSAGE = "Fixes applied via " + METERIAN_BOT;
+    public static final String METERIAN_GITHUB_USER = "meterian-bot";
+    public static final String METERIAN_GITHUB_EMAIL = "bot.github@meterian.io";
+    private static final String METERIAN_COMMIT_MESSAGE = String.format("Fixes applied via %s", METERIAN_GITHUB_USER);
 
     private final Git git;
     private PrintStream jenkinsLogger;
@@ -64,9 +64,9 @@ public class LocalGitClient {
             addChangedFileToBranch(unCommittedFiles);
 
             log.info("Applying commits");
-            commitChanges(METERIAN_BOT,
-                    METERIAN_BOT,
-                    METERIAN_BOT_EMAIL,
+            commitChanges(METERIAN_GITHUB_USER,
+                    METERIAN_GITHUB_USER,
+                    METERIAN_GITHUB_EMAIL,
                     METERIAN_COMMIT_MESSAGE);
 
             log.info("Finished committing changes to branch " + currentBranch);
@@ -150,8 +150,8 @@ public class LocalGitClient {
         if (iterator.hasNext()) {
             RevCommit currentCommit = iterator.next();
             PersonIdent author = currentCommit.getAuthorIdent();
-            return author.getName().equalsIgnoreCase(METERIAN_BOT) &&
-                    author.getEmailAddress().equalsIgnoreCase(METERIAN_BOT_EMAIL);
+            return author.getName().equalsIgnoreCase(METERIAN_GITHUB_USER) &&
+                    author.getEmailAddress().equalsIgnoreCase(METERIAN_GITHUB_EMAIL);
         }
         return false;
     }

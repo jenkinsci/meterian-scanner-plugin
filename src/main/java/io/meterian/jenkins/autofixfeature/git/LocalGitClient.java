@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,7 +21,7 @@ public class LocalGitClient {
 
     static final Logger log = LoggerFactory.getLogger(LocalGitClient.class);
 
-    public static final String NO_CHANGES_FOUND_WARNING = "No changes found (no fixed generated), no branch to push to the remote repo.";
+    public static final String NO_CHANGES_FOUND_WARNING = "No changes found (no fixes generated), no branch to push to the remote repo.";
 
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
@@ -73,16 +72,6 @@ public class LocalGitClient {
             log.info("Finished committing changes to branch " + currentBranch);
     }
 
-    public boolean otherMeterianLocalBranchesDoNotExist() throws GitAPIException {
-        List<Ref> branchRefList = git.branchList().call();
-        List<Ref> foundBranches = branchRefList
-                .stream()
-                .filter(branch -> !branch.getName().contains("remotes"))
-                .filter(branch -> branch.getName().contains(FIXED_BY_METERIAN + "-"))
-                .collect(Collectors.toList());
-        return foundBranches.size() == 0;
-    }
-
     public String getOrgOrUsername() throws GitAPIException {
         String[] fullRepoName = getRepositoryName().split("/");
         if (fullRepoName.length > 0) {
@@ -98,7 +87,7 @@ public class LocalGitClient {
                 .call();
     }
 
-    public void pushBranchToRemoteRepo() throws GitAPIException {
+    public void pushBranchToRemoteRepo() {
         try {
             log.debug("Checking if current branch was created by Meterian");
             if (currentBranchWasCreatedByMeterianClient()) {
@@ -165,10 +154,6 @@ public class LocalGitClient {
                     author.getEmailAddress().equalsIgnoreCase(METERIAN_BOT_EMAIL);
         }
         return false;
-    }
-
-    public boolean currentBranchWasNotCreatedByMeterianClient() throws GitAPIException {
-        return ! currentBranchWasCreatedByMeterianClient();
     }
 
     private String getMeterianBranchName() throws GitAPIException, IOException {
@@ -244,7 +229,7 @@ public class LocalGitClient {
             checkoutRef = checkoutBranch(currentBranch);
         }
 
-        log.info("Created branch " + currentBranch + " and switched to it");
+        log.info(String.format("Created branch %s and switched to it", currentBranch));
         return checkoutRef;
     }
 
@@ -272,5 +257,27 @@ public class LocalGitClient {
                 .setCommitter(committerName, email)
                 .setMessage(commitMessage)
                 .call();
+    }
+
+    public boolean currentBranchHasNotBeenFixedYet() throws GitAPIException {
+        return getFixedBranchNameForCurrentBranch().isEmpty();
+    }
+
+    public String getFixedBranchNameForCurrentBranch() throws GitAPIException {
+        List<Ref> branchRefList = git.branchList().call();
+        List<Ref> foundBranches = branchRefList
+                .stream()
+                .filter(branch -> !branch.getName().contains("remotes"))
+                .filter(this::byLocalFixedBranchName)
+                .collect(Collectors.toList());
+        return foundBranches.size() == 0 ? "" : foundBranches.get(0).getName();
+    }
+
+    private boolean byLocalFixedBranchName(Ref branch) {
+        try {
+            return branch.getName().contains(FIXED_BY_METERIAN + "-" + getCurrentBranchSHA());
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

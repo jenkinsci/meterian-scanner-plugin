@@ -56,14 +56,14 @@ public class MeterianClientTest {
         String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
         assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
 
-        String meterianMachineUser = getMeterianMachineUser();
-        if ((meterianMachineUser == null) || meterianMachineUser.trim().isEmpty()) {
-            jenkinsLogger.println("DEFAULT_METERIAN_MACHINE_USER has not been set, tests will be run using the default value assumed for this environment variable");
+        String meterianGithubUser = getMeterianGithubUser();
+        if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
+            jenkinsLogger.println("METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
-        String meterianMachineUserEmail = getMeterianMachineUserEmail();
-        if ((meterianMachineUserEmail == null) || meterianMachineUserEmail.trim().isEmpty()) {
-            jenkinsLogger.println("DEFAULT_METERIAN_MACHINE_USER_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
+        String meterianGithubEmail = getMeterianGithubEmail();
+        if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
+            jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
         MeterianPlugin.Configuration configuration = new MeterianPlugin.Configuration(
@@ -71,8 +71,8 @@ public class MeterianClientTest {
                 meterianAPIToken,
                 NO_JVM_ARGS,
                 meterianGithubToken,
-                meterianMachineUser,
-                meterianMachineUserEmail);
+                meterianGithubUser,
+                meterianGithubEmail);
 
         String args = "";
 
@@ -170,11 +170,11 @@ public class MeterianClientTest {
         return environment;
     }
 
-    private String getMeterianMachineUser() {
-        return environment.get("METERIAN_MACHINE_USER", "meterian-bot");
+    private String getMeterianGithubUser() {
+        return environment.get("METERIAN_GITHUB_USER", "meterian-bot");
     }
 
-    private String getMeterianMachineUserEmail() {
-        return environment.get("METERIAN_MACHINE_USER_EMAIL", "bot.github@meterian.io");
+    private String getMeterianGithubEmail() {
+        return environment.get("METERIAN_GITHUB_EMAIL", "bot.github@meterian.io");
     }
 }

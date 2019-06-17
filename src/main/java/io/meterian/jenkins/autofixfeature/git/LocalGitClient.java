@@ -26,18 +26,21 @@ public class LocalGitClient {
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    private static final String DEFAULT_METERIAN_MACHINE_USER = "meterian-bot";
-    private static final String DEFAULT_METERIAN_MACHINE_USER_EMAIL = "bot.github@meterian.io";
+    private static final String DEFAULT_METERIAN_GITHUB_USER = "meterian-bot";            // Machine User name, when user does not set one
+    private static final String DEFAULT_METERIAN_GITHUB_EMAIL = "bot.github@meterian.io"; // Email associated with the Machine User, when user does not set one
 
     private final Git git;
-    private final String meterianMachineUser;
-    private final String meterianMachineUserEmail;
+    private final String meterianGithubUser;  // Machine User name
+    private final String meterianGithubEmail; // Email associated with the Machine User
     private PrintStream jenkinsLogger;
     private String currentBranch;
 
-    public LocalGitClient(String pathToRepo, String meterianMachineUser, String meterianMachineUserEmail, PrintStream jenkinsLogger) {
-        this.meterianMachineUser = meterianMachineUser;
-        this.meterianMachineUserEmail = meterianMachineUserEmail;
+    public LocalGitClient(String pathToRepo,
+                          String meterianGithubUser,
+                          String meterianGithubEmail,
+                          PrintStream jenkinsLogger) {
+        this.meterianGithubUser = meterianGithubUser;
+        this.meterianGithubEmail = meterianGithubEmail;
 
         this.jenkinsLogger = jenkinsLogger;
 
@@ -51,18 +54,18 @@ public class LocalGitClient {
         }
     }
 
-    public String getMeterianMachineUser() {
-        if ((meterianMachineUser == null) || meterianMachineUser.trim().isEmpty()) {
-            return DEFAULT_METERIAN_MACHINE_USER;
+    public String getMeterianGithubUser() {
+        if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
+            return DEFAULT_METERIAN_GITHUB_USER;
         }
-        return meterianMachineUser;
+        return meterianGithubUser;
     }
 
-    public String getMeterianMachineUserEmail() {
-        if ((meterianMachineUserEmail == null) || meterianMachineUserEmail.trim().isEmpty()) {
-            return DEFAULT_METERIAN_MACHINE_USER_EMAIL;
+    public String getMeterianGithubEmail() {
+        if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
+            return DEFAULT_METERIAN_GITHUB_EMAIL;
         }
-        return meterianMachineUserEmail;
+        return meterianGithubEmail;
     }
 
     public String getRepositoryName() throws GitAPIException {
@@ -82,16 +85,16 @@ public class LocalGitClient {
             addChangedFileToBranch(unCommittedFiles);
 
             log.info("Applying commits");
-            commitChanges(getMeterianMachineUser(),
-                    getMeterianMachineUser(),
-                    getMeterianMachineUserEmail(),
+            commitChanges(getMeterianGithubUser(),
+                    getMeterianGithubUser(),
+                    getMeterianGithubEmail(),
                     getMeterianCommitMessage());
 
             log.info(String.format("Finished committing changes to branch %s", currentBranch));
     }
 
     private String getMeterianCommitMessage() {
-        return String.format("Fixes applied via %s", getMeterianMachineUser());
+        return String.format("Fixes applied via %s", getMeterianGithubUser());
     }
 
     public String getOrgOrUsername() throws GitAPIException {
@@ -172,8 +175,8 @@ public class LocalGitClient {
         if (iterator.hasNext()) {
             RevCommit currentCommit = iterator.next();
             PersonIdent author = currentCommit.getAuthorIdent();
-            return author.getName().equalsIgnoreCase(getMeterianMachineUser()) &&
-                    author.getEmailAddress().equalsIgnoreCase(getMeterianMachineUserEmail());
+            return author.getName().equalsIgnoreCase(getMeterianGithubUser()) &&
+                    author.getEmailAddress().equalsIgnoreCase(getMeterianGithubEmail());
         }
         return false;
     }

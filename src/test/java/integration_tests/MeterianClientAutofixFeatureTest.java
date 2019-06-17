@@ -64,26 +64,26 @@ public class MeterianClientAutofixFeatureTest {
         String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
         assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
 
-        String meterianMachineUser = getMeterianMachineUser();
-        if ((meterianMachineUser == null) || meterianMachineUser.trim().isEmpty()) {
-            jenkinsLogger.println("METERIAN_MACHINE_USER has not been set, tests will be run using the default value assumed for this environment variable");
+        String meterianGithubUser = getMeterianGithubUser();
+        if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
+            jenkinsLogger.println("METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
-        String meterianMachineUserEmail = getMeterianMachineUserEmail();
-        if ((meterianMachineUserEmail == null) || meterianMachineUserEmail.trim().isEmpty()) {
-            jenkinsLogger.println("METERIAN_MACHINE_USER_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
+        String meterianGithubEmail = getMeterianGithubEmail();
+        if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
+            jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
-        String meterianMachineUserToken = environment.get("METERIAN_MACHINE_USER_TOKEN");
-        assertThat("METERIAN_MACHINE_USER_TOKEN has not been set, cannot run test without a valid value", meterianMachineUserToken, notNullValue());
+        String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
+        assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
 
         configuration = new MeterianPlugin.Configuration(
                 BASE_URL,
                 meterianAPIToken,
                 NO_JVM_ARGS,
-                meterianMachineUser,
-                meterianMachineUserEmail,
-                meterianMachineUserToken
+                meterianGithubUser,
+                meterianGithubEmail,
+                meterianGithubToken
         );
     }
 
@@ -95,7 +95,7 @@ public class MeterianClientAutofixFeatureTest {
         performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder);
 
         // Deleting remote branch automatically closes any Pull Request attached to it
-        configureGitUserNameAndEmail(getMeterianMachineUser(), getMeterianMachineUserEmail());
+        configureGitUserNameAndEmail(getMeterianGithubUser(), getMeterianGithubEmail());
         deleteRemoteBranch("fixed-by-meterian-29c4d26");
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
@@ -297,12 +297,12 @@ public class MeterianClientAutofixFeatureTest {
             }});
     }
 
-    private String getMeterianMachineUser() {
-        return getOSEnvSettings().get("METERIAN_MACHINE_USER");
+    private String getMeterianGithubUser() {
+        return getOSEnvSettings().get("METERIAN_GITHUB_USER");
     }
 
-    private String getMeterianMachineUserEmail() {
-        return getOSEnvSettings().get("METERIAN_MACHINE_USER_EMAIL");
+    private String getMeterianGithubEmail() {
+        return getOSEnvSettings().get("METERIAN_GITHUB_EMAIL");
     }
 
     private EnvVars getEnvironment() {

@@ -98,24 +98,29 @@ public class MeterianPlugin extends Builder {
         private String token;
         private String jvmArgs;
 
-        private String githubToken;
-        private String meterianMachineUser;
-        private String meterianMachineUserEmail;
+        private String meterianGithubToken;
+        private String meterianGithubUser;
+        private String meterianGithubEmail;
 
         public Configuration() {
             load();
         }
 
-        public Configuration(String url, String token, String jvmArgs, String githubToken, String meterianMachineUser, String meterianMachineUserEmail) {
+        public Configuration(String url,
+                             String token,
+                             String jvmArgs,
+                             String meterianGithubToken,
+                             String meterianGithubUser,
+                             String meterianGithubEmail) {
             this.url = url;
             this.token = token;
             this.jvmArgs = jvmArgs;
-            this.githubToken = githubToken;
-            this.meterianMachineUser = meterianMachineUser;
-            this.meterianMachineUserEmail = meterianMachineUserEmail;
+            this.meterianGithubToken = meterianGithubToken;
+            this.meterianGithubUser = meterianGithubUser;
+            this.meterianGithubEmail = meterianGithubEmail;
 
-            log.info("Read configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]\nmeterianMachineUser: [{}]\nmeterianMachineUserEmail: [{}]",
-                    url, jvmArgs, mask(token), mask(githubToken), meterianMachineUser, meterianMachineUserEmail);
+            log.info("Read configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\nmeterianGithubToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]",
+                    url, jvmArgs, mask(token), mask(meterianGithubToken), meterianGithubUser, meterianGithubEmail);
         }
 
         @Override
@@ -133,13 +138,13 @@ public class MeterianPlugin extends Builder {
             url = computeFinalUrl(formData.getString("url"));
             token = computeFinalToken(formData.getString("token"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
-            githubToken = parseEmpty(formData.getString("githubToken"), "");
-            meterianMachineUser = parseEmpty(formData.getString("meterianMachineUser"), "");
-            meterianMachineUserEmail = parseEmpty(formData.getString("meterianMachineUserEmail"), "");
+            meterianGithubToken = parseEmpty(formData.getString("meterianGithubToken"), "");
+            meterianGithubUser = parseEmpty(formData.getString("meterianGithubUser"), "");
+            meterianGithubEmail = parseEmpty(formData.getString("meterianGithubEmail"), "");
 
             save();
-            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]\nmeterianMachineUser: [{}]\nmeterianMachineUserEmail: [{}]",
-                    url, jvmArgs, mask(token), mask(githubToken), meterianMachineUser, meterianMachineUserEmail);
+            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\nmeterianGithubToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]",
+                    url, jvmArgs, mask(token), mask(meterianGithubToken), meterianGithubUser, meterianGithubEmail);
 
             return super.configure(req, formData);
         }
@@ -163,16 +168,16 @@ public class MeterianPlugin extends Builder {
             return token;
         }
 
-        public String getGithubToken() {
-            return githubToken;
+        public String getMeterianGithubToken() {
+            return meterianGithubToken;
         }
 
-        public String getMeterianMachineUser() {
-            return meterianMachineUser;
+        public String getMeterianGithubUser() {
+            return meterianGithubUser;
         }
 
-        public String getMeterianMachineUserEmail() {
-            return meterianMachineUserEmail;
+        public String getMeterianGithubEmail() {
+            return meterianGithubEmail;
         }
 
         public String getMeterianBaseUrl() {

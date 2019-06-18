@@ -79,7 +79,7 @@ public class MeterianClientAutofixFeatureTest {
         performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder);
 
         // Deleting remote branch automatically closes any Pull Request attached to it
-        configureGitUserNameAndEmail(LocalGitClient.METERIAN_BOT, LocalGitClient.METERIAN_BOT_EMAIL);
+        configureGitUserNameAndEmail(LocalGitClient.METERIAN_GITHUB_USER, LocalGitClient.METERIAN_GITHUB_EMAIL);
         deleteRemoteBranch("fixed-by-meterian-29c4d26");
 
         createLoggers();

@@ -44,6 +44,8 @@ public class TestManagement {
         environment = getEnvironment();
     }
 
+    public TestManagement() {}
+
     public void verifyRunAnalysisLogs(File logFile,
                                       String[] containsLogLines,
                                       String[] doesNotContainLogLines) throws IOException {
@@ -196,11 +198,11 @@ public class TestManagement {
         return task.waitFor();
     }
 
-    private PrintStream nullPrintStream() {
+    public PrintStream nullPrintStream() {
         return new PrintStream(new NullOutputStream());
     }
 
-    private static HttpClient newHttpClient() {
+    public static HttpClient newHttpClient() {
         return new HttpClientFactory().newHttpClient(new HttpClientFactory.Config() {
             @Override
             public int getHttpConnectTimeout() {

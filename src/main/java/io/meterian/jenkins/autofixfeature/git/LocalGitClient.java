@@ -2,6 +2,7 @@ package io.meterian.jenkins.autofixfeature.git;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -191,6 +192,28 @@ public class LocalGitClient {
                 .isClean();
     }
 
+    public void resetChanges() throws GitAPIException {
+        if (hasChanges()) {
+            git.reset()
+                .setMode(ResetCommand.ResetType.HARD)
+                .call();
+        }
+    }
+
+    public boolean currentBranchHasNotBeenFixedYet() throws GitAPIException {
+        return getFixedBranchNameForCurrentBranch().isEmpty();
+    }
+
+    public String getFixedBranchNameForCurrentBranch() throws GitAPIException {
+        List<Ref> branchRefList = git.branchList().call();
+        List<Ref> foundBranches = branchRefList
+                .stream()
+                .filter(branch -> !branch.getName().contains("remotes"))
+                .filter(this::byLocalFixedBranchName)
+                .collect(Collectors.toList());
+        return foundBranches.size() == 0 ? "" : foundBranches.get(0).getName();
+    }
+
     private String stripOffRefsPrefix(String currentBranch) {
         return currentBranch
                 .replace("refs/heads/", "")
@@ -265,20 +288,6 @@ public class LocalGitClient {
                 .setCommitter(committerName, email)
                 .setMessage(commitMessage)
                 .call();
-    }
-
-    public boolean currentBranchHasNotBeenFixedYet() throws GitAPIException {
-        return getFixedBranchNameForCurrentBranch().isEmpty();
-    }
-
-    public String getFixedBranchNameForCurrentBranch() throws GitAPIException {
-        List<Ref> branchRefList = git.branchList().call();
-        List<Ref> foundBranches = branchRefList
-                .stream()
-                .filter(branch -> !branch.getName().contains("remotes"))
-                .filter(this::byLocalFixedBranchName)
-                .collect(Collectors.toList());
-        return foundBranches.size() == 0 ? "" : foundBranches.get(0).getName();
     }
 
     private boolean byLocalFixedBranchName(Ref branch) {

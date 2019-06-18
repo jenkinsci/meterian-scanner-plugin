@@ -55,7 +55,10 @@ The `meterian-plugin.hpi` is the artifact that will be installed as a Jenkins pl
 In order to run the tests locally we would need the following two environment variables populated with valid values or else the tests will fail:
 
 - `METERIAN_API_TOKEN` - this is generated via the Meterian dashboard (via https://www.meterian.com, you will need an account) 
+- `METERIAN_GITHUB_USER` - this is the machine user account created by yourself (learn more about machine user creation at [GitHub: developer guides | machine-users](https://developer.github.com/v3/guides/managing-deploy-keys/#machine-users)), follow the steps mentioned in the link (default: meterian-bot)
+- `METERIAN_GITHUB_EMAIL` - this is the email address associated with the machine user account created in the previous step (default: bot.github@meterian.io)
 - `METERIAN_GITHUB_TOKEN` - this is the personal token generated from the machine user account created by yourself (learn more about machine user creation at [GitHub: developer guides | machine-users](https://developer.github.com/v3/guides/managing-deploy-keys/#machine-users)), follow the steps mentioned in the link
+
 
 ### CircleCI configuration
 

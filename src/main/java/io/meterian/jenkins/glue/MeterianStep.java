@@ -78,6 +78,10 @@ public class MeterianStep extends Step {
                     jenkinsLogger,
                     args);
 
+            if (! client.requiredEnvironmentVariableHasBeenSet()) {
+                return null;
+            }
+
             client.prepare("--interactive=false");
 
             MeterianExecutor executor;

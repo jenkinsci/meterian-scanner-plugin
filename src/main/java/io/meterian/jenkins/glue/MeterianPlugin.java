@@ -62,11 +62,16 @@ public class MeterianPlugin extends Builder {
         EnvVars environment = build.getEnvironment(listener);
         Configuration configuration = getConfiguration();
         PrintStream jenkinsLogger = listener.getLogger();
+
         Meterian client = Meterian.build(
                 configuration,
                 environment,
                 jenkinsLogger,
                 args);
+
+        if (! client.requiredEnvironmentVariableHasBeenSet()) {
+            return false;
+        }
 
         client.prepare("--interactive=false");
 

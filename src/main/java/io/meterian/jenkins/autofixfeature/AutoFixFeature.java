@@ -17,6 +17,9 @@ public class AutoFixFeature {
     private static final String LOCAL_BRANCH_ALREADY_EXISTS_WARNING =
             "[meterian] Warning: %s already exists in the local repo, skipping the local branch creation process";
 
+    private static final String BRANCH_ALREADY_FIXED_WARNING =
+            "[meterian] Warning: %s is already fixed, no need to do anything";
+
     static final Logger log = LoggerFactory.getLogger(AutoFixFeature.class);
 
     private final LocalGitClient localGitClient;
@@ -39,16 +42,28 @@ public class AutoFixFeature {
                 jenkinsLogger);
     }
 
-    public void execute() {
+    public void execute() throws Exception {
         try {
-            if (localGitClient.currentBranchHasNotBeenFixedYet()) {
+            if (localGitClient.currentBranchWasCreatedByMeterianClient()) {
+                String thisBranchIsFixedMessage = String.format(
+                        BRANCH_ALREADY_FIXED_WARNING, localGitClient.getCurrentBranch()
+                );
+                log.warn(thisBranchIsFixedMessage);
+                jenkinsLogger.println(thisBranchIsFixedMessage);
+
+                return;
+            } else if (localGitClient.currentBranchHasNotBeenFixedYet()) {
                 if (failedClientExecution()) {
                     localGitClient.resetChanges();
+
                     log.error(ABORTING_BRANCH_AND_PR_CREATION_PROCESS);
                     jenkinsLogger.println(ABORTING_BRANCH_AND_PR_CREATION_PROCESS);
+
                     return;
                 }
             } else {
+                clientRunner.breakBuild();
+
                 String fixedBranchExistsMessage = String.format(
                         LOCAL_BRANCH_ALREADY_EXISTS_WARNING, localGitClient.getFixedBranchNameForCurrentBranch()
                 );

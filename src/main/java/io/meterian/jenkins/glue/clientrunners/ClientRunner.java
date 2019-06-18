@@ -12,10 +12,11 @@ import java.util.concurrent.Callable;
 
 public class ClientRunner {
     private static final Logger log = LoggerFactory.getLogger(ClientRunner.class);
-    private Callable setJenkinsResultStatus;
 
     private Meterian client;
     private PrintStream jenkinsLogger;
+
+    private Callable setJenkinsBuildToBreak;
 
     public ClientRunner(Meterian client,
                         AbstractBuild build,
@@ -23,7 +24,7 @@ public class ClientRunner {
         this.client = client;
         this.jenkinsLogger = jenkinsLogger;
 
-        setJenkinsResultStatus = () -> { build.setResult(Result.FAILURE); return null; };
+        setJenkinsBuildToBreak = () -> { build.setResult(Result.FAILURE); return null; };
     }
 
     public ClientRunner(Meterian client,
@@ -32,7 +33,7 @@ public class ClientRunner {
         this.client = client;
         this.jenkinsLogger = jenkinsLogger;
 
-        setJenkinsResultStatus = () -> { context.setResult(Result.FAILURE); return null; };
+        setJenkinsBuildToBreak = () -> { context.setResult(Result.FAILURE); return null; };
     }
 
     public int execute() {
@@ -40,7 +41,7 @@ public class ClientRunner {
         try {
             Meterian.Result buildResult = client.run();
             if (failedAnalysis(buildResult)) {
-                setJenkinsResultStatus.call();
+                breakBuild();
 
                 String clientFailedMsg = String.format("Meterian client analysis failed with exit code %d", buildResult.exitCode);
                 log.error(clientFailedMsg);
@@ -61,5 +62,13 @@ public class ClientRunner {
 
     public boolean userHasUsedTheAutofixFlag() {
         return client.getFinalClientArgs().contains("--autofix");
+    }
+
+    public void breakBuild() throws Exception {
+        setJenkinsBuildToBreak.call();
+
+        String clientFailedMsg = String.format("[meterian] Breaking build");
+        log.error(clientFailedMsg);
+        jenkinsLogger.println(clientFailedMsg);
     }
 }

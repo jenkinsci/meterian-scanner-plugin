@@ -5,13 +5,20 @@ import com.meterian.common.system.OS;
 import com.meterian.common.system.Shell;
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
+import io.meterian.jenkins.autofixfeature.AutoFixFeature;
+import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
+import io.meterian.jenkins.glue.clientrunners.ClientRunner;
+import io.meterian.jenkins.glue.executors.MeterianExecutor;
+import io.meterian.jenkins.glue.executors.StandardExecutor;
 import io.meterian.jenkins.io.ClientDownloader;
 import io.meterian.jenkins.io.HttpClientFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -20,9 +27,11 @@ import java.io.PrintStream;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
 
 public class TestManagement {
 
@@ -33,6 +42,7 @@ public class TestManagement {
     private Logger log;
     private PrintStream jenkinsLogger;
     private EnvVars environment;
+    private LocalGitClient gitClient;
 
     public TestManagement(String gitRepoWorkingFolder,
                           Logger log,
@@ -45,6 +55,31 @@ public class TestManagement {
     }
 
     public TestManagement() {}
+
+
+    public void runMeterianClientAndReportAnalysis(MeterianPlugin.Configuration configuration, PrintStream jenkinsLogger) {
+        try {
+            File clientJar = getClientJar();
+            Meterian client = getMeterianClient(configuration, clientJar);
+            client.prepare("--interactive=false", "--autofix");
+
+            ClientRunner clientRunner =
+                    new ClientRunner(client, mock(StepContext.class), jenkinsLogger);
+
+            AutoFixFeature autoFixFeature = new AutoFixFeature(
+                    configuration,
+                    environment,
+                    clientRunner,
+                    jenkinsLogger
+            );
+            MeterianExecutor executor = new StandardExecutor(clientRunner, autoFixFeature);
+            executor.run(client);
+            jenkinsLogger.close();
+
+        } catch (Exception ex) {
+            fail("Should not have failed with the exception: " + ex.getMessage());
+        }
+    }
 
     public void verifyRunAnalysisLogs(File logFile,
                                       String[] containsLogLines,
@@ -90,6 +125,38 @@ public class TestManagement {
                 exitCode, exitCode, is(equalTo(0)));
     }
 
+    public void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
+        String[] gitCloneRepoCommand = new String[] {
+                "git",
+                "clone",
+                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName), // only use ssh or git protocol and not https - uses ssh keys to authenticate
+                "-b",
+                branch
+        };
+
+        int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);
+
+        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
+                exitCode, exitCode, is(equalTo(0)));
+    }
+
+    public boolean branchExists(String branchName) throws GitAPIException {
+        return ! getGitClient().findBranchByName(branchName).isEmpty();
+    }
+
+    public void resetBranch(String branch) throws GitAPIException {
+        checkoutBranch(branch);
+        getGitClient().resetChanges();
+    }
+
+    public void checkoutBranch(String branch) throws GitAPIException {
+        String currentBranch = getGitClient().checkoutBranch(branch).getName();
+
+        assertThat("Cannot run the test, as we were unable to switch to the target branch on the target repo",
+                branch, is(equalTo(currentBranch
+                        .replace("refs/heads/", ""))));
+    }
+
     public void deleteRemoteBranch(String branchName) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
@@ -103,23 +170,6 @@ public class TestManagement {
         assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
                 exitCode, exitCode, is(equalTo(0)));
 
-    }
-
-    public String performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "clone",
-                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName), // only use ssh or git protocol and not https - uses ssh keys to authenticate
-                "-b",
-                branch
-        };
-
-        int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);
-
-        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
-
-        return Paths.get(workingFolder, githubProjectName).toString();
     }
 
     public String getMeterianGithubUser() {
@@ -229,5 +279,18 @@ public class TestManagement {
                 // TODO Auto-generated method stub
                 return null;
             }});
+    }
+
+    private LocalGitClient getGitClient() {
+        if (gitClient == null) {
+            gitClient = new LocalGitClient(
+                    gitRepoWorkingFolder,
+                    getMeterianGithubUser(),
+                    getMeterianGithubEmail(),
+                    jenkinsLogger
+            );
+        }
+
+        return gitClient;
     }
 }

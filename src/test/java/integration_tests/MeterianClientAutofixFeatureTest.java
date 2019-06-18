@@ -92,14 +92,14 @@ public class MeterianClientAutofixFeatureTest {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
-        performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder);
+        performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder, "master");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         configureGitUserNameAndEmail(
                 getMeterianGithubUser() == null ? "meterian-bot" : getMeterianGithubUser(),
                 getMeterianGithubEmail() == null ? "bot.github@meterian.io" : getMeterianGithubEmail()
         );
-        deleteRemoteBranch("fixed-by-meterian-29c4d26");
+        deleteRemoteBranch("fixed-by-meterian-196350c");
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         runMeterianClientAndReportAnalysis(jenkinsLogger);
@@ -107,7 +107,10 @@ public class MeterianClientAutofixFeatureTest {
         // Then: we should be able to see the expected output in the execution analysis output logs and the
         // reported vulnerabilities should be fixed, the changes committed to a branch and a pull request
         // created onto the respective remote Github repository of the project
-        verifyRunAnalysisLogs(logFile, new String[]{
+        verifyRunAnalysisLogs(logFile,
+            new String[]{
+                "METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable",
+                "METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable",
                 "[meterian] Client successfully authorized",
                 "[meterian] Meterian Client v",
                 "[meterian] - autofix mode:      on",
@@ -117,19 +120,27 @@ public class MeterianClientAutofixFeatureTest {
                 "[meterian] JAVA scan -",
                 "MeterianHQ/autofix-sample-maven-upgrade.git",
                 "[meterian] Full report available at: ",
-                "[meterian] Build unsuccesful!",
-                "[meterian] Failed checks: [security]",
-                "[meterian] Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-29c4d26."
-        });
+                "[meterian] Final results:",
+                "[meterian] - security:	100	(minimum: 90)",
+                "[meterian] - stability:	100	(minimum: 80)",
+                "[meterian] - licensing:	99	(minimum: 95)",
+                "[meterian] Build successful!",
+                "[meterian] Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-196350c."
+            },
+            new String[]{
+                    "Meterian client analysis failed with exit code ",
+                    "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
+            }
+        );
     }
 
     @Test
     public void step2_givenMeterianClientHasBeenRunAsInStep1_whenMeterianClientIsReRunWithAutofixOptionOnAFixedBranch_thenItShouldDoNothing() throws IOException {
         // Given: the Meterian Client has been run once before (in step 1 of the test)
-        // a local branch called fixed-by-meterian-29c4d26 already exists
-        // a remote branch called fixed-by-meterian-29c4d26 already exists
-        // a pull request attached to remote branch fixed-by-meterian-29c4d26 also exists
-        // and the current branch is fixed-by-meterian-29c4d26
+        // a local branch called fixed-by-meterian-196350c already exists
+        // a remote branch called fixed-by-meterian-196350c already exists
+        // a pull request attached to remote branch fixed-by-meterian-196350c also exists
+        // and the current branch is fixed-by-meterian-196350c
 
         // When: meterian client is run on the current branch (which has already been fixed before)
         runMeterianClientAndReportAnalysis(jenkinsLogger);
@@ -137,23 +148,32 @@ public class MeterianClientAutofixFeatureTest {
         // Then: we should be able to see the expected output in the execution analysis output logs and no action should
         // be taken by it, it should report warnings of the presence of the local branch with the fixes, the remote branch
         // with the fixes and also the pull request attached to this remote branch
-        verifyRunAnalysisLogs(logFile, new String[]{
+        verifyRunAnalysisLogs(logFile,
+            new String[]{
+                "METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable",
+                "METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable",
                 "[meterian] Client successfully authorized",
                 "[meterian] Meterian Client v",
                 "[meterian] - autofix mode:      on",
                 "[meterian] Running autofix, 1 programs",
-                "[meterian] Sorry, no changes made. Try a different reach or strategy!",
                 "[meterian] Project information:",
                 "[meterian] JAVA scan -",
                 "MeterianHQ/autofix-sample-maven-upgrade.git",
                 "[meterian] Full report available at: ",
-                "[meterian] Build unsuccesful!",
-                "[meterian] Failed checks: [security]",
+                "[meterian] Final results:",
+                "[meterian] - security:	100	(minimum: 90)",
+                "[meterian] - stability:	100	(minimum: 80)",
+                "[meterian] - licensing:	99	(minimum: 95)",
                 "No changes found (no fixes generated), no branch to push to the remote repo.",
-                "[meterian] Warning: fixed-by-meterian-29c4d26 already exists in the remote repo, skipping the remote branch creation process.",
-                "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-29c4d26",
+                "[meterian] Warning: fixed-by-meterian-196350c already exists in the remote repo, skipping the remote branch creation process.",
+                "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-196350c",
                 "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point)."
-        });
+            },
+            new String[]{
+                "Meterian client analysis failed with exit code ",
+                "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
+            }
+        );
     }
 
     private void runMeterianClientAndReportAnalysis(PrintStream jenkinsLogger) {
@@ -180,10 +200,17 @@ public class MeterianClientAutofixFeatureTest {
         }
     }
 
-    private void verifyRunAnalysisLogs(File logFile, String[] specificLogLines) throws IOException {
+    private void verifyRunAnalysisLogs(File logFile,
+                                       String[] containsLogLines,
+                                       String[] doesNotContainLogLines) throws IOException {
         String runAnalysisLogs = readRunAnalysisLogs(logFile.getPath());
-        for (String eachLogLine: specificLogLines) {
+
+        for (String eachLogLine: containsLogLines) {
             assertThat(runAnalysisLogs, containsString(eachLogLine));
+        }
+
+        for (String eachLogLine: doesNotContainLogLines) {
+            assertThat(runAnalysisLogs, not(containsString(eachLogLine)));
         }
     }
 
@@ -237,11 +264,13 @@ public class MeterianClientAutofixFeatureTest {
         return FileUtils.readFileToString(logFile);
     }
 
-    private void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder) throws IOException {
+    private void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
-                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName) // only use ssh or git protocol and not https - uses ssh keys to authenticate
+                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName), // only use ssh or git protocol and not https - uses ssh keys to authenticate
+                "-b",
+                branch
         };
 
         int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);

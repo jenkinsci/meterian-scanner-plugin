@@ -35,17 +35,28 @@ public class ClientRunner {
         setJenkinsResultStatus = () -> { context.setResult(Result.FAILURE); return null; };
     }
 
-    public void execute() {
+    public int execute() {
+        int executionResult = -1;
         try {
             Meterian.Result buildResult = client.run();
-            if (buildResult.exitCode != 0) {
+            if (failedAnalysis(buildResult)) {
                 setJenkinsResultStatus.call();
+
+                String clientFailedMsg = String.format("Meterian client analysis failed with exit code %d", buildResult.exitCode);
+                log.error(clientFailedMsg);
+                jenkinsLogger.println(clientFailedMsg);
             }
+            executionResult = buildResult.exitCode;
         } catch (Exception ex) {
             log.warn("Unexpected", ex);
             jenkinsLogger.println("Unexpected exception!");
             ex.printStackTrace(jenkinsLogger);
         }
+        return executionResult;
+    }
+
+    private boolean failedAnalysis(Meterian.Result buildResult) {
+        return buildResult.exitCode != 0;
     }
 
     public boolean userHasUsedTheAutofixFlag() {

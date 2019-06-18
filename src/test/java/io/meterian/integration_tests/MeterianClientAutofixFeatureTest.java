@@ -205,7 +205,7 @@ public class MeterianClientAutofixFeatureTest {
                         "[meterian] - security:\t35\t(minimum: 90)",
                         "[meterian] - stability:\t100\t(minimum: 80)",
                         "[meterian] - licensing:\t99\t(minimum: 95)",
-                        "[meterian] Build unsuccesful!",
+                        "[meterian] Build unsuccessful!",
                         "[meterian] Failed checks: [security]",
                         "Meterian client analysis failed with exit code 1",
                         "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."

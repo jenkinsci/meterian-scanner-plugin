@@ -190,6 +190,9 @@ public class TestManagement {
         String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
         assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
 
+        String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
+        assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
+
         String meterianGithubUser = getMeterianGithubUser();
         if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
             jenkinsLogger.println("METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable");
@@ -199,9 +202,6 @@ public class TestManagement {
         if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
             jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
-
-        String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
-        assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
 
         return new MeterianPlugin.Configuration(
                 BASE_URL,

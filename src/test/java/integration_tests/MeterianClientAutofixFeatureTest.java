@@ -111,8 +111,6 @@ public class MeterianClientAutofixFeatureTest {
         // created onto the respective remote Github repository of the project
         verifyRunAnalysisLogs(logFile,
             new String[]{
-                "METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable",
-                "METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable",
                 "[meterian] Client successfully authorized",
                 "[meterian] Meterian Client v",
                 "[meterian] - autofix mode:      on",
@@ -152,8 +150,6 @@ public class MeterianClientAutofixFeatureTest {
         // with the fixes and also the pull request attached to this remote branch
         verifyRunAnalysisLogs(logFile,
             new String[]{
-                "METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable",
-                "METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable",
                 "[meterian] Client successfully authorized",
                 "[meterian] Meterian Client v",
                 "[meterian] - autofix mode:      on",
@@ -224,8 +220,6 @@ public class MeterianClientAutofixFeatureTest {
         // and NO pull request must be created onto the respective remote Github repository of the project
         verifyRunAnalysisLogs(logFile,
                 new String[]{
-                        "METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable",
-                        "METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable",
                         "[meterian] Client successfully authorized",
                         "[meterian] Meterian Client v",
                         "[meterian] - autofix mode:      on",

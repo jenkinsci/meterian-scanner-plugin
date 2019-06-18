@@ -1,4 +1,4 @@
-package integration_tests;
+package io.meterian.integration_tests;
 
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;

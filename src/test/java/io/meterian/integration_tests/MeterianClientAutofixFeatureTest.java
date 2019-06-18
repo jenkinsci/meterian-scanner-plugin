@@ -1,10 +1,6 @@
-package integration_tests;
+package io.meterian.integration_tests;
 
-import com.meterian.common.system.LineGobbler;
-import com.meterian.common.system.OS;
-import com.meterian.common.system.Shell;
 import hudson.EnvVars;
-import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
@@ -12,11 +8,8 @@ import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
-import io.meterian.jenkins.io.ClientDownloader;
-import io.meterian.jenkins.io.HttpClientFactory;
+import io.meterian.test_management.TestManagement;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.output.NullOutputStream;
-import org.apache.http.client.HttpClient;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.junit.Before;
@@ -30,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
-import java.util.Map;
 
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.*;
@@ -42,10 +34,8 @@ public class MeterianClientAutofixFeatureTest {
 
     private static final Logger log = LoggerFactory.getLogger(MeterianClientAutofixFeatureTest.class);
 
-    private static final String BASE_URL = "https://www.meterian.com";
+    private TestManagement testManagement;
     private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
-
-    private static final String NO_JVM_ARGS = "";
 
     private MeterianPlugin.Configuration configuration;
     private EnvVars environment;
@@ -62,31 +52,10 @@ public class MeterianClientAutofixFeatureTest {
         jenkinsLogger = new PrintStream(logFile);
         log.info("Jenkins log file: " + logFile.toPath().toString());
 
-        environment = getEnvironment();
-        String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
-        assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
+        testManagement = new TestManagement(gitRepoWorkingFolder, log, jenkinsLogger);
 
-        String meterianGithubUser = getMeterianGithubUser();
-        if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
-            jenkinsLogger.println("METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable");
-        }
-
-        String meterianGithubEmail = getMeterianGithubEmail();
-        if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
-            jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
-        }
-
-        String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
-        assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
-
-        configuration = new MeterianPlugin.Configuration(
-                BASE_URL,
-                meterianAPIToken,
-                NO_JVM_ARGS,
-                meterianGithubUser,
-                meterianGithubEmail,
-                meterianGithubToken
-        );
+        environment = testManagement.getEnvironment();
+        configuration = testManagement.getConfiguration();
     }
 
     @Test
@@ -94,14 +63,14 @@ public class MeterianClientAutofixFeatureTest {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
-        performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder, "master");
+        testManagement.performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder, "master");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
-        configureGitUserNameAndEmail(
-                getMeterianGithubUser() == null ? "meterian-bot" : getMeterianGithubUser(),
-                getMeterianGithubEmail() == null ? "bot.github@meterian.io" : getMeterianGithubEmail()
+        testManagement.configureGitUserNameAndEmail(
+                testManagement.getMeterianGithubUser() == null ? "meterian-bot" : testManagement.getMeterianGithubUser(),
+                testManagement.getMeterianGithubEmail() == null ? "bot.github@meterian.io" : testManagement.getMeterianGithubEmail()
         );
-        deleteRemoteBranch("fixed-by-meterian-196350c");
+        testManagement.deleteRemoteBranch("fixed-by-meterian-196350c");
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         runMeterianClientAndReportAnalysis(jenkinsLogger);
@@ -109,7 +78,7 @@ public class MeterianClientAutofixFeatureTest {
         // Then: we should be able to see the expected output in the execution analysis output logs and the
         // reported vulnerabilities should be fixed, the changes committed to a branch and a pull request
         // created onto the respective remote Github repository of the project
-        verifyRunAnalysisLogs(logFile,
+        testManagement.verifyRunAnalysisLogs(logFile,
             new String[]{
                 "[meterian] Client successfully authorized",
                 "[meterian] Meterian Client v",
@@ -148,7 +117,7 @@ public class MeterianClientAutofixFeatureTest {
         // Then: we should be able to see the expected output in the execution analysis output logs and no action should
         // be taken by it, it should report warnings of the presence of the local branch with the fixes, the remote branch
         // with the fixes and also the pull request attached to this remote branch
-        verifyRunAnalysisLogs(logFile,
+        testManagement.verifyRunAnalysisLogs(logFile,
             new String[]{
                 "[meterian] Client successfully authorized",
                 "[meterian] Meterian Client v",
@@ -176,8 +145,8 @@ public class MeterianClientAutofixFeatureTest {
 
     private void runMeterianClientAndReportAnalysis(PrintStream jenkinsLogger) {
         try {
-            File clientJar = new ClientDownloader(newHttpClient(), BASE_URL, nullPrintStream()).load();
-            Meterian client = Meterian.build(configuration, environment, jenkinsLogger, NO_JVM_ARGS, clientJar);
+            File clientJar = testManagement.getClientJar();
+            Meterian client = testManagement.getMeterianClient(configuration, clientJar);
             client.prepare("--interactive=false", "--autofix");
 
             ClientRunner clientRunner =
@@ -203,13 +172,13 @@ public class MeterianClientAutofixFeatureTest {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
-        performCloneGitRepo(
+        testManagement.performCloneGitRepo(
                 "MeterianHQ", githubProjectName, gitRepoRootFolder, "partially-fixed-by-autofix");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
-        configureGitUserNameAndEmail(
-                getMeterianGithubUser() == null ? "meterian-bot" : getMeterianGithubUser(),
-                getMeterianGithubEmail() == null ? "bot.github@meterian.io" : getMeterianGithubEmail()
+        testManagement.configureGitUserNameAndEmail(
+                testManagement.getMeterianGithubUser() == null ? "meterian-bot" : testManagement.getMeterianGithubUser(),
+                testManagement.getMeterianGithubEmail() == null ? "bot.github@meterian.io" : testManagement.getMeterianGithubEmail()
         );
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
@@ -218,7 +187,7 @@ public class MeterianClientAutofixFeatureTest {
         // Then: we should be able to see the expected output in the execution analysis output logs and the
         // reported vulnerabilities should NOT be fully fixed, NO changes must be committed to a local or remote branch
         // and NO pull request must be created onto the respective remote Github repository of the project
-        verifyRunAnalysisLogs(logFile,
+        testManagement.verifyRunAnalysisLogs(logFile,
                 new String[]{
                         "[meterian] Client successfully authorized",
                         "[meterian] Meterian Client v",
@@ -248,8 +217,8 @@ public class MeterianClientAutofixFeatureTest {
         );
         LocalGitClient gitClient = new LocalGitClient(
                 environment.get("WORKSPACE"),
-                getMeterianGithubUser(),
-                getMeterianGithubEmail(),
+                testManagement.getMeterianGithubUser(),
+                testManagement.getMeterianGithubEmail(),
                 jenkinsLogger
         );
         assertThat("Should have had nothing to commit on current branch",
@@ -257,159 +226,5 @@ public class MeterianClientAutofixFeatureTest {
         assertThat("Should have been positioned at the current branch by the name 'partially-fixed-by-autofix'",
                 gitClient.getCurrentBranch(),
                 is(equalTo("partially-fixed-by-autofix")));
-    }
-
-    private void verifyRunAnalysisLogs(File logFile,
-                                       String[] containsLogLines,
-                                       String[] doesNotContainLogLines) throws IOException {
-        String runAnalysisLogs = readRunAnalysisLogs(logFile.getPath());
-
-        for (String eachLogLine: containsLogLines) {
-            assertThat(runAnalysisLogs, containsString(eachLogLine));
-        }
-
-        for (String eachLogLine: doesNotContainLogLines) {
-            assertThat(runAnalysisLogs, not(containsString(eachLogLine)));
-        }
-    }
-
-    private void configureGitUserNameAndEmail(String userName, String userEmail) throws IOException {
-        // git config --global user.name "Your Name"
-        String[] gitConfigUserNameCommand = new String[] {
-                "git",
-                "config",
-                "--local",
-                "user.name",
-                userName
-        };
-
-        int exitCode = runCommand(gitConfigUserNameCommand, gitRepoWorkingFolder, log);
-
-        assertThat("Cannot run the test, as we were unable configure a user due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
-
-        // git config --global user.email "you@example.com"
-        String[] gitConfigUserEmailCommand = new String[] {
-                "git",
-                "config",
-                "--local",
-                "user.email",
-                userEmail
-        };
-
-        exitCode = runCommand(gitConfigUserEmailCommand, gitRepoWorkingFolder, log);
-
-        assertThat("Cannot run the test, as we were unable configure a user userEmail due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
-    }
-
-    private void deleteRemoteBranch(String branchName) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "push",
-                "origin",
-                ":" + branchName
-        };
-
-        int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
-
-        assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
-
-    }
-
-    private String readRunAnalysisLogs(String pathToLog) throws IOException {
-        File logFile = new File(pathToLog);
-        return FileUtils.readFileToString(logFile);
-    }
-
-    private void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "clone",
-                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName), // only use ssh or git protocol and not https - uses ssh keys to authenticate
-                "-b",
-                branch
-        };
-
-        int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);
-
-        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
-    }
-
-
-    private int runCommand(String[] command, String workingFolder, Logger log) throws IOException {
-        LineGobbler errorLineGobbler = (type, text) ->
-                log.error("{}> {}", type, text);
-
-        Shell.Options options = new Shell.Options()
-                .onDirectory(new File(workingFolder))
-                .withErrorGobbler(errorLineGobbler)
-                .withEnvironmentVariables(getOSEnvSettings());
-        Shell.Task task = new Shell().exec(
-                command,
-                options
-        );
-
-        return task.waitFor();
-    }
-
-    private PrintStream nullPrintStream() {
-        return new PrintStream(new NullOutputStream());
-    }
-
-    private static HttpClient newHttpClient() {
-        return new HttpClientFactory().newHttpClient(new HttpClientFactory.Config() {
-            @Override
-            public int getHttpConnectTimeout() {
-                return Integer.MAX_VALUE;
-            }
-
-            @Override
-            public int getHttpSocketTimeout() {
-                return Integer.MAX_VALUE;
-            }
-
-            @Override
-            public int getHttpMaxTotalConnections() {
-                return 100;
-            }
-
-            @Override
-            public int getHttpMaxDefaultConnectionsPerRoute() {
-                return 100;
-            }
-
-            @Override
-            public String getHttpUserAgent() {
-                // TODO Auto-generated method stub
-                return null;
-            }});
-    }
-
-    private String getMeterianGithubUser() {
-        return getOSEnvSettings().get("METERIAN_GITHUB_USER");
-    }
-
-    private String getMeterianGithubEmail() {
-        return getOSEnvSettings().get("METERIAN_GITHUB_EMAIL");
-    }
-
-    private EnvVars getEnvironment() {
-        EnvVars environment = getOSEnvSettings();
-        environment.put("WORKSPACE", gitRepoWorkingFolder);
-        return environment;
-    }
-
-    private EnvVars getOSEnvSettings() {
-        EnvironmentVariablesNodeProperty prop = new EnvironmentVariablesNodeProperty();
-        EnvVars environment = prop.getEnvVars();
-
-        Map<String, String> localEnvironment = new OS().getenv();
-        for (String envKey: localEnvironment.keySet()) {
-            environment.put(envKey, localEnvironment.get(envKey));
-        }
-        return environment;
     }
 }

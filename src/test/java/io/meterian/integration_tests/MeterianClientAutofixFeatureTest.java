@@ -1,6 +1,5 @@
 package io.meterian.integration_tests;
 
-import hudson.EnvVars;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
@@ -9,13 +8,17 @@ import io.meterian.jenkins.glue.clientrunners.ClientRunner;
 import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
 import io.meterian.test_management.TestManagement;
+
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
+import hudson.EnvVars;
+
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

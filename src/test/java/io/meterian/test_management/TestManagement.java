@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Paths;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -46,7 +47,7 @@ public class TestManagement {
     public void verifyRunAnalysisLogs(File logFile,
                                       String[] containsLogLines,
                                       String[] doesNotContainLogLines) throws IOException {
-        String runAnalysisLogs = readRunAnalysisLogs(logFile.getPath());
+        String runAnalysisLogs = FileUtils.readFileToString(new File(logFile.getPath()));
 
         for (String eachLogLine: containsLogLines) {
             assertThat(runAnalysisLogs, containsString(eachLogLine));
@@ -102,7 +103,7 @@ public class TestManagement {
 
     }
 
-    public void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
+    public String performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
         String[] gitCloneRepoCommand = new String[] {
                 "git",
                 "clone",
@@ -115,6 +116,8 @@ public class TestManagement {
 
         assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
                 exitCode, exitCode, is(equalTo(0)));
+
+        return Paths.get(workingFolder, githubProjectName).toString();
     }
 
     public String getMeterianGithubUser() {
@@ -164,11 +167,6 @@ public class TestManagement {
 
     public Meterian getMeterianClient(MeterianPlugin.Configuration configuration, File clientJar) throws IOException {
         return Meterian.build(configuration, environment, jenkinsLogger, NO_JVM_ARGS, clientJar);
-    }
-
-    private String readRunAnalysisLogs(String pathToLog) throws IOException {
-        File logFile = new File(pathToLog);
-        return FileUtils.readFileToString(logFile);
     }
 
     private EnvVars getOSEnvSettings() {

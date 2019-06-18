@@ -43,6 +43,7 @@ public class AutoFixFeature {
         try {
             if (localGitClient.currentBranchHasNotBeenFixedYet()) {
                 if (failedClientExecution()) {
+                    localGitClient.resetChanges();
                     log.error(ABORTING_BRANCH_AND_PR_CREATION_PROCESS);
                     jenkinsLogger.println(ABORTING_BRANCH_AND_PR_CREATION_PROCESS);
                     return;

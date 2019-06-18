@@ -6,6 +6,7 @@ import com.meterian.common.system.Shell;
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
+import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
@@ -16,6 +17,7 @@ import io.meterian.jenkins.io.HttpClientFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
@@ -88,7 +90,7 @@ public class MeterianClientAutofixFeatureTest {
     }
 
     @Test
-    public void step1_givenConfiguration_whenMeterianClientIsRunWithAutofixOptionForTheFirstTime_thenItShouldReturnAnalysisReportAndFixThem() throws IOException {
+    public void scenario1_givenConfiguration_whenMeterianClientIsRunWithAutofixOptionForTheFirstTime_thenItShouldReturnAnalysisReportAndFixThem() throws IOException {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
@@ -135,7 +137,7 @@ public class MeterianClientAutofixFeatureTest {
     }
 
     @Test
-    public void step2_givenMeterianClientHasBeenRunAsInStep1_whenMeterianClientIsReRunWithAutofixOptionOnAFixedBranch_thenItShouldDoNothing() throws IOException {
+    public void scenario2_givenMeterianClientHasBeenRunAsInStep1_whenMeterianClientIsReRunWithAutofixOptionOnAFixedBranch_thenItShouldDoNothing() throws IOException {
         // Given: the Meterian Client has been run once before (in step 1 of the test)
         // a local branch called fixed-by-meterian-196350c already exists
         // a remote branch called fixed-by-meterian-196350c already exists
@@ -198,6 +200,69 @@ public class MeterianClientAutofixFeatureTest {
         } catch (Exception ex) {
             fail("Should not have failed with the exception: " + ex.getMessage());
         }
+    }
+
+    @Test
+    public void scenario3_givenConfiguration_whenMeterianClientIsRunWithAutofixOptionForTheFirstTime_thenItShouldReturnAnalysisReportAndPartiallyFixThem() throws IOException, GitAPIException {
+        // Given: we are setup to run the meterian client against a repo that has vulnerabilities
+        FileUtils.deleteDirectory(new File(gitRepoRootFolder));
+        new File(gitRepoRootFolder).mkdir();
+        performCloneGitRepo(
+                "MeterianHQ", githubProjectName, gitRepoRootFolder, "partially-fixed-by-autofix");
+
+        // Deleting remote branch automatically closes any Pull Request attached to it
+        configureGitUserNameAndEmail(
+                getMeterianGithubUser() == null ? "meterian-bot" : getMeterianGithubUser(),
+                getMeterianGithubEmail() == null ? "bot.github@meterian.io" : getMeterianGithubEmail()
+        );
+
+        // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
+        runMeterianClientAndReportAnalysis(jenkinsLogger);
+
+        // Then: we should be able to see the expected output in the execution analysis output logs and the
+        // reported vulnerabilities should NOT be fully fixed, NO changes must be committed to a local or remote branch
+        // and NO pull request must be created onto the respective remote Github repository of the project
+        verifyRunAnalysisLogs(logFile,
+                new String[]{
+                        "METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable",
+                        "METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable",
+                        "[meterian] Client successfully authorized",
+                        "[meterian] Meterian Client v",
+                        "[meterian] - autofix mode:      on",
+                        "[meterian] Running autofix, 1 programs",
+                        "[meterian] Autofix applied, will run the build again.",
+                        "[meterian] Project information:",
+                        "[meterian] JAVA scan -",
+                        "MeterianHQ/autofix-sample-maven-upgrade.git",
+                        "[meterian] Execution successful!",
+                        "[meterian] Final results:",
+                        "[meterian] - security:\t35\t(minimum: 90)",
+                        "[meterian] - stability:\t100\t(minimum: 80)",
+                        "[meterian] - licensing:\t99\t(minimum: 95)",
+                        "[meterian] Build unsuccesful!",
+                        "[meterian] Failed checks: [security]",
+                        "Meterian client analysis failed with exit code 1",
+                        "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
+                },
+                new String[]{
+                        "Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-",
+                        "[meterian] Warning: fixed-by-meterian-" +
+                        "already exists in the remote repo, skipping the remote branch creation process.",
+                        "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-",
+                        "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point)."
+                }
+        );
+        LocalGitClient gitClient = new LocalGitClient(
+                environment.get("WORKSPACE"),
+                getMeterianGithubUser(),
+                getMeterianGithubEmail(),
+                jenkinsLogger
+        );
+        assertThat("Should have had nothing to commit on current branch",
+                gitClient.hasChanges(), is(false));
+        assertThat("Should have been positioned at the current branch by the name 'partially-fixed-by-autofix'",
+                gitClient.getCurrentBranch(),
+                is(equalTo("partially-fixed-by-autofix")));
     }
 
     private void verifyRunAnalysisLogs(File logFile,

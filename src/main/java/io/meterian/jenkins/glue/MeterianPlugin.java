@@ -98,7 +98,7 @@ public class MeterianPlugin extends Builder {
         private static final int ONE_MINUTE = 60 * 1000;
 
         private String url;
-        private String token;
+        private String meterianAPIToken;
         private String jvmArgs;
 
         private String meterianGithubUser;
@@ -110,20 +110,20 @@ public class MeterianPlugin extends Builder {
         }
 
         public Configuration(String url,
-                             String token,
+                             String meterianAPIToken,
                              String jvmArgs,
                              String meterianGithubUser,
                              String meterianGithubEmail,
                              String meterianGithubToken) {
             this.url = url;
-            this.token = token;
+            this.meterianAPIToken = meterianAPIToken;
             this.jvmArgs = jvmArgs;
             this.meterianGithubUser = meterianGithubUser;
             this.meterianGithubEmail = meterianGithubEmail;
             this.meterianGithubToken = meterianGithubToken;
 
-            log.info("Read configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
-                    url, jvmArgs, mask(token),
+            log.info("Read configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
+                    url, jvmArgs, mask(meterianAPIToken),
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
                     meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
                     mask(meterianGithubToken));
@@ -142,15 +142,15 @@ public class MeterianPlugin extends Builder {
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             url = computeFinalUrl(formData.getString("url"));
-            token = computeFinalToken(formData.getString("token"));
+            meterianAPIToken = computeFinalToken(formData.getString("meterianAPIToken"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
             meterianGithubUser = parseEmpty(formData.getString("meterianGithubUser"), "");
             meterianGithubEmail = parseEmpty(formData.getString("meterianGithubEmail"), "");
             meterianGithubToken = parseEmpty(formData.getString("meterianGithubToken"), "");
 
             save();
-            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
-                    url, jvmArgs, mask(token),
+            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
+                    url, jvmArgs, mask(meterianAPIToken),
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
                     meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
                     mask(meterianGithubToken)
@@ -174,8 +174,8 @@ public class MeterianPlugin extends Builder {
             return jvmArgs;
         }
 
-        public String getToken() {
-            return token;
+        public String getMeterianAPIToken() {
+            return meterianAPIToken;
         }
 
 
@@ -203,7 +203,7 @@ public class MeterianPlugin extends Builder {
 
         public FormValidation doTestConnection(
                 @QueryParameter("url") String testUrl,
-                @QueryParameter("token") String testToken
+                @QueryParameter("meterianAPIToken") String testToken
         ) throws IOException, ServletException {
 
             String apiUrl = computeFinalUrl(testUrl);

@@ -119,7 +119,7 @@ Using the `--autofix` client arg option (Go to Jenkins > Configure > Meterian fo
 
 This option does the task of scanning the project and reporting the vulnerabilities, if present, and also applying the fix to the respective branch and creating a pull request to the repository.
 
-Ensure your GitHub OAuth token to your Organisation and Repo has been added to the Meterian configuration settings under Jenkins > Configure > Meterian. Enter your GitHub OAuth token in the field **GitHub OA UTH token**. If this field is empty or incorrect appropriate error messages are displayed in the Jenkins logger (console).
+Ensure your GitHub OAuth token to your Organisation and Repo has been added to the Meterian configuration settings under Jenkins > Configure > Meterian. Enter your GitHub OAuth meterianAPIToken in the field **GitHub OAUTH token**. If this field is empty or incorrect appropriate error messages are displayed in the Jenkins logger (console).
 
 #### Running Meterian client from CLI
 

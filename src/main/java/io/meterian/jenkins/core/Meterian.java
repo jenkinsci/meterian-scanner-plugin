@@ -191,13 +191,13 @@ public class Meterian {
             }
         };
 
-        log.info("Using config token: {}", config.getToken() != null ? "yes" : "no");
+        log.info("Using config token: {}", config.getMeterianAPIToken() != null ? "yes" : "no");
 
         return new Options()
                 .withOutputGobbler(gobbler)
                 .withErrorGobbler(gobbler)
                 .withEnvironmentVariables(this.environment)
-                .withEnvironmentVariable("METERIAN_API_TOKEN", config.getToken())
+                .withEnvironmentVariable("METERIAN_API_TOKEN", config.getMeterianAPIToken())
                 .withEnvironmentVariables(new OS().getenv());
     }
 }

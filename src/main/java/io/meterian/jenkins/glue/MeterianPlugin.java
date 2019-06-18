@@ -37,6 +37,9 @@ import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
 @SuppressWarnings("rawtypes")
 public class MeterianPlugin extends Builder {
 
+    private static final String DEFAULT_METERIAN_GITHUB_USER = "meterian-bot";            // Machine User name, when user does not set one
+    private static final String DEFAULT_METERIAN_GITHUB_EMAIL = "bot.github@meterian.io"; // Email associated with the Machine User, when user does not set one
+
     static final Logger log = LoggerFactory.getLogger(MeterianPlugin.class);
 
     private final String args;
@@ -71,7 +74,7 @@ public class MeterianPlugin extends Builder {
                 new ClientRunner(client, build, jenkinsLogger);
         AutoFixFeature autoFixFeature = new AutoFixFeature(
                 configuration,
-                environment.get("WORKSPACE"),
+                environment,
                 clientRunner,
                 jenkinsLogger
         );
@@ -98,19 +101,32 @@ public class MeterianPlugin extends Builder {
         private String token;
         private String jvmArgs;
 
-        private String githubToken;
+        private String meterianGithubUser;
+        private String meterianGithubEmail;
+        private String meterianGithubToken;
 
         public Configuration() {
             load();
         }
 
-        public Configuration(String url, String token, String jvmArgs, String githubToken) {
+        public Configuration(String url,
+                             String token,
+                             String jvmArgs,
+                             String meterianGithubUser,
+                             String meterianGithubEmail,
+                             String meterianGithubToken) {
             this.url = url;
             this.token = token;
             this.jvmArgs = jvmArgs;
-            this.githubToken = githubToken;
+            this.meterianGithubUser = meterianGithubUser;
+            this.meterianGithubEmail = meterianGithubEmail;
+            this.meterianGithubToken = meterianGithubToken;
 
-            log.info("Read configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]", url, jvmArgs, mask(token), mask(githubToken));
+            log.info("Read configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
+                    url, jvmArgs, mask(token),
+                    meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
+                    meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
+                    mask(meterianGithubToken));
         }
 
         @Override
@@ -128,10 +144,17 @@ public class MeterianPlugin extends Builder {
             url = computeFinalUrl(formData.getString("url"));
             token = computeFinalToken(formData.getString("token"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
-            githubToken = parseEmpty(formData.getString("githubToken"), "");
+            meterianGithubUser = parseEmpty(formData.getString("meterianGithubUser"), "");
+            meterianGithubEmail = parseEmpty(formData.getString("meterianGithubEmail"), "");
+            meterianGithubToken = parseEmpty(formData.getString("meterianGithubToken"), "");
 
             save();
-            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\ngithubToken: [{}]", url, jvmArgs, mask(token), mask(githubToken));
+            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\ntoken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
+                    url, jvmArgs, mask(token),
+                    meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
+                    meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
+                    mask(meterianGithubToken)
+            );
 
             return super.configure(req, formData);
         }
@@ -155,8 +178,23 @@ public class MeterianPlugin extends Builder {
             return token;
         }
 
-        public String getGithubToken() {
-            return githubToken;
+
+        public String getMeterianGithubUser() {
+            if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
+                return DEFAULT_METERIAN_GITHUB_USER;
+            }
+            return meterianGithubUser;
+        }
+
+        public String getMeterianGithubEmail() {
+            if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
+                return DEFAULT_METERIAN_GITHUB_EMAIL;
+            }
+            return meterianGithubEmail;
+        }
+
+        public String getMeterianGithubToken() {
+            return meterianGithubToken;
         }
 
         public String getMeterianBaseUrl() {

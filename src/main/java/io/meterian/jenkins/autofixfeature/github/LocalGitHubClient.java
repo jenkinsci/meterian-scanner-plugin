@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,25 +28,20 @@ public class LocalGitHubClient {
             "[meterian] Warning: Found %d pull request(s) for org: %s, repo: %s, branch: %s";
     private static final String FINISHED_CREATING_PULL_REQUEST_MESSAGE = "[meterian] Finished creating pull request for org: %s, repo: %s, branch: %s.";
 
+    private static final String METERIAN_FIX_PULL_REQUEST_TITLE = "[meterian] Fix for vulnerable dependencies";
+    private static final String METERIAN_FIX_PULL_REQUEST_BODY = "Dependencies in project configuration file has been fixed";
+
+    private static final String PULL_REQUEST_CREATION_ERROR = "Error occurred while creating pull request due to: %s";
+    private static final String PULL_REQUEST_FETCHING_ACTION = "Fetching pull request(s) for org: %s, repo: %s, branch: %s";
+    private static final String PULL_REQUEST_CREATION_ACTION = "Creating pull request for org: %s, repo: %s, branch: %s";
+    private static final String PULL_REQUEST_FETCHING_ERROR = "Error occurred while fetching pull requests due to: %s";
+
     private final String orgOrUserName;
     private final String repoName;
     private final PrintStream jenkinsLogger;
 
     private GitHubClient github;
     private PullRequestService pullRequestService;
-
-    public static void main(String[] args) {
-        PrintStream noOpStream = new PrintStream(new OutputStream() {
-            public void write(int b) {
-                // NO-OP
-            }
-        });
-        new LocalGitHubClient(
-                System.getenv("METERIAN_GITHUB_TOKEN"),
-                "MeterianHQ",
-                "MeterianHQ/autofix-sample-maven-upgrade",
-                noOpStream).createPullRequest("fixed-by-meterian-29c4d26");
-    }
 
     public LocalGitHubClient(String gitHubToken,
                              String orgOrUserName,
@@ -71,12 +65,10 @@ public class LocalGitHubClient {
     public void createPullRequest(String branchName) {
         if (pullRequestDoesNotExist(branchName)) {
             log.info(String.format(
-                    "Creating pull request for org: %s, repo: %s, branch: %s", orgOrUserName, repoName, branchName
+                    PULL_REQUEST_CREATION_ACTION, orgOrUserName, repoName, branchName
             ));
             try {
                 Repository repository = getRepositoryFrom(orgOrUserName, repoName);
-                String title = "[meterian] Fix for vulnerable dependencies";
-                String body = "Dependencies in project configuration file has been fixed";
                 PullRequestMarker head = new PullRequestMarker()
                         .setRef(branchName)
                         .setLabel(String.format("%s:%s", orgOrUserName, branchName));
@@ -84,10 +76,10 @@ public class LocalGitHubClient {
                                 .setRef("master")
                                 .setLabel("master");
                 PullRequest pullRequest = new PullRequest()
-                        .setTitle(title)
+                        .setTitle(METERIAN_FIX_PULL_REQUEST_TITLE)
                         .setHead(head)
                         .setBase(base)
-                        .setBody(body);
+                        .setBody(METERIAN_FIX_PULL_REQUEST_BODY);
                 // See docs at https://developer.github.com/v3/pulls/#create-a-pull-request
                 log.info(pullRequest.toString());
                 pullRequestService.createPullRequest(repository, pullRequest);
@@ -97,7 +89,7 @@ public class LocalGitHubClient {
                 log.info(finishedCreatingPullRequestMessage);
                 jenkinsLogger.println(finishedCreatingPullRequestMessage);
             } catch (Exception ex) {
-                log.error("Error occurred while creating pull request due to: " + ex.getMessage(), ex);
+                log.error(String.format(PULL_REQUEST_CREATION_ERROR, ex.getMessage()), ex);
                 throw new RuntimeException(ex);
             }
         } else {
@@ -108,7 +100,7 @@ public class LocalGitHubClient {
 
     private boolean pullRequestDoesNotExist(String branchName) {
         log.info(String.format(
-                "Fetching pull request(s) for org: %s, repo: %s, branch: %s", orgOrUserName, repoName, branchName
+                PULL_REQUEST_FETCHING_ACTION, orgOrUserName, repoName, branchName
         ));
         try {
             Repository repository = getRepositoryFrom(orgOrUserName, repoName);
@@ -125,7 +117,7 @@ public class LocalGitHubClient {
             }
             return pullRequestsFound.size() == 0;
         } catch (Exception ex) {
-            log.error("Error occurred while fetching pull requests due to: " + ex.getMessage(), ex);
+            log.error(String.format(PULL_REQUEST_FETCHING_ERROR, ex.getMessage()), ex);
             throw new RuntimeException(ex);
         }
     }

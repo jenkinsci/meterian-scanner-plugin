@@ -26,18 +26,22 @@ public class LocalGitClient {
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
-    public static final String METERIAN_BOT = "meterian-bot";
-    public static final String METERIAN_BOT_EMAIL = "bot.github@meterian.io";
-    private static final String METERIAN_COMMIT_MESSAGE = "Fixes applied via " + METERIAN_BOT;
-
     private final Git git;
+    private final String meterianGithubUser;  // Machine User name
+    private final String meterianGithubEmail; // Email associated with the Machine User
     private PrintStream jenkinsLogger;
     private String currentBranch;
 
-    public LocalGitClient(String pathToRepo, PrintStream jenkinsLogger) {
+    public LocalGitClient(String pathToRepo,
+                          String meterianGithubUser,
+                          String meterianGithubEmail,
+                          PrintStream jenkinsLogger) {
+        this.meterianGithubUser = meterianGithubUser;
+        this.meterianGithubEmail = meterianGithubEmail;
+
         this.jenkinsLogger = jenkinsLogger;
 
-        log.info("Workspace (path to the git repo): " + pathToRepo);
+        log.info(String.format("Workspace (path to the git repo): %s", pathToRepo));
         try {
             git = Git.open(new File(pathToRepo));
             currentBranch = getCurrentBranch();
@@ -60,16 +64,20 @@ public class LocalGitClient {
             createBranch();
 
             Set<String> unCommittedFiles = listOfChanges();
-            log.info("Files changed: " + Arrays.toString(unCommittedFiles.toArray()));
+            log.info(String.format("Files changed: %s", Arrays.toString(unCommittedFiles.toArray())));
             addChangedFileToBranch(unCommittedFiles);
 
             log.info("Applying commits");
-            commitChanges(METERIAN_BOT,
-                    METERIAN_BOT,
-                    METERIAN_BOT_EMAIL,
-                    METERIAN_COMMIT_MESSAGE);
+            commitChanges(meterianGithubUser,
+                    meterianGithubUser,
+                    meterianGithubEmail,
+                    getMeterianCommitMessage());
 
-            log.info("Finished committing changes to branch " + currentBranch);
+            log.info(String.format("Finished committing changes to branch %s", currentBranch));
+    }
+
+    private String getMeterianCommitMessage() {
+        return String.format("Fixes applied via %s", meterianGithubUser);
     }
 
     public String getOrgOrUsername() throws GitAPIException {
@@ -108,7 +116,7 @@ public class LocalGitClient {
                 log.debug("Current branch was not created by Meterian");
             }
         } catch (Exception ex) {
-            String couldNotPushDueToError = "Could not push branch " + currentBranch + " to remote repo due to error: " + ex.getMessage();
+            String couldNotPushDueToError = String.format("Could not push branch %s to remote repo due to error: %s", currentBranch, ex.getMessage());
             log.debug(couldNotPushDueToError);
             jenkinsLogger.println(couldNotPushDueToError);
 
@@ -150,8 +158,8 @@ public class LocalGitClient {
         if (iterator.hasNext()) {
             RevCommit currentCommit = iterator.next();
             PersonIdent author = currentCommit.getAuthorIdent();
-            return author.getName().equalsIgnoreCase(METERIAN_BOT) &&
-                    author.getEmailAddress().equalsIgnoreCase(METERIAN_BOT_EMAIL);
+            return author.getName().equalsIgnoreCase(meterianGithubUser) &&
+                    author.getEmailAddress().equalsIgnoreCase(meterianGithubEmail);
         }
         return false;
     }
@@ -234,7 +242,7 @@ public class LocalGitClient {
     }
 
     private DirCache addChangedFileToBranch(Set<String> fileNames) throws GitAPIException {
-        log.info("Adding files to branch: " + fileNames);
+        log.info(String.format("Adding files to branch: %s", fileNames));
 
         DirCache result = null;
         for (String eachFile : fileNames) {
@@ -250,7 +258,7 @@ public class LocalGitClient {
                                     String committerName,
                                     String email,
                                     String commitMessage) throws GitAPIException {
-        log.info("Committing changes from author: " + authorName);
+        log.info(String.format("Committing changes from author: %s", authorName));
         return git
                 .commit()
                 .setAuthor(authorName, email)
@@ -275,7 +283,9 @@ public class LocalGitClient {
 
     private boolean byLocalFixedBranchName(Ref branch) {
         try {
-            return branch.getName().contains(FIXED_BY_METERIAN + "-" + getCurrentBranchSHA());
+            return branch.getName().contains(
+                    String.format("%s-%s", FIXED_BY_METERIAN, getCurrentBranchSHA())
+            );
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }

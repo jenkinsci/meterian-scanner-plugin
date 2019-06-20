@@ -6,14 +6,11 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 import static junit.framework.TestCase.fail;
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.assertThat;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
-import hudson.EnvVars;
 
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
@@ -24,10 +21,7 @@ public class MeterianClientTest {
 
     private static final Logger log = LoggerFactory.getLogger(MeterianClientTest.class);
 
-    private static final String BASE_URL = "https://www.meterian.com";
     private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
-
-    private static final String NO_JVM_ARGS = "";
 
     private TestManagement testManagement;
     private File logFile;
@@ -37,8 +31,6 @@ public class MeterianClientTest {
     private String gitRepoRootFolder = Paths.get(CURRENT_WORKING_DIR, "target/github-repo/").toString();
     private String gitRepoWorkingFolder = Paths.get(gitRepoRootFolder, githubProjectName).toString();
 
-    private EnvVars environment;
-
     @Before
     public void setup() throws IOException {
         logFile = File.createTempFile("jenkins-logger-", Long.toString(System.nanoTime()));
@@ -46,14 +38,11 @@ public class MeterianClientTest {
         log.info("Jenkins log file: " + logFile.toPath().toString());
 
         testManagement = new TestManagement(gitRepoWorkingFolder, log, jenkinsLogger);
-        environment = testManagement.getEnvironment();
 
-        String gitRepoRootFolder = Paths.get(CURRENT_WORKING_DIR, "target/github-repo/").toString();
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
 
         new File(gitRepoRootFolder).mkdir();
 
-        //gitRepoWorkingFolder =
         testManagement.performCloneGitRepo(
                 "MeterianHQ",
                 "autofix-sample-maven-upgrade",
@@ -63,35 +52,10 @@ public class MeterianClientTest {
 
     @Test
     public void givenConfiguration_whenMeterianClientIsRun_thenItShouldNotThrowException() throws IOException {
+        // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         File logFile = File.createTempFile("jenkins-logger", Long.toString(System.nanoTime()));
         PrintStream jenkinsLogger = new PrintStream(logFile);
-
-        // Given: we are setup to run the meterian client against a repo that has vulnerabilities
-        String meterianAPIToken = environment.get("METERIAN_API_TOKEN");
-        assertThat("METERIAN_API_TOKEN has not been set, cannot run test without a valid value", meterianAPIToken, notNullValue());
-        String meterianGithubToken = environment.get("METERIAN_GITHUB_TOKEN");
-        assertThat("METERIAN_GITHUB_TOKEN has not been set, cannot run test without a valid value", meterianGithubToken, notNullValue());
-
-        String meterianGithubUser = testManagement.getMeterianGithubUser();
-        if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
-            jenkinsLogger.println("METERIAN_GITHUB_USER has not been set, tests will be run using the default value assumed for this environment variable");
-        }
-
-        String meterianGithubEmail = testManagement.getMeterianGithubEmail();
-        if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
-            jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
-        }
-
-        MeterianPlugin.Configuration configuration = new MeterianPlugin.Configuration(
-                BASE_URL,
-                meterianAPIToken,
-                NO_JVM_ARGS,
-                meterianGithubUser,
-                meterianGithubEmail,
-                meterianGithubToken
-        );
-
-        String args = "";
+        MeterianPlugin.Configuration configuration = testManagement.getConfiguration();
 
         // When: the meterian client is run against the locally cloned git repo
         try {
@@ -114,7 +78,7 @@ public class MeterianClientTest {
                         "[meterian] JAVA scan -",
                         "MeterianHQ/autofix-sample-maven-upgrade.git",
                         "[meterian] Full report available at: ",
-                        "[meterian] Build unsuccesful!",
+                        "[meterian] Build unsuccessful!",
                         "[meterian] Failed checks: [security]"
                 }
         );

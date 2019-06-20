@@ -3,7 +3,6 @@ package io.meterian.jenkins.glue.executors;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
-import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 public class StandardExecutor implements MeterianExecutor {
 
@@ -17,7 +16,7 @@ public class StandardExecutor implements MeterianExecutor {
     }
 
     @Override
-    public void run(Meterian client) {
+    public void run(Meterian client) throws Exception {
         if (clientRunner.userHasUsedTheAutofixFlag()) {
             autoFixFeature.execute();
         } else {

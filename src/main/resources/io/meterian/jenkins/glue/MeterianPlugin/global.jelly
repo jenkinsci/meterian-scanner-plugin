@@ -4,7 +4,7 @@
 	<f:entry title="API URL" field="url" description="Enter an alternative Meterian API URL">
       <f:textbox />
     </f:entry>
-	<f:entry title="API token" field="token" description="Enter a Meterian API token associated to your account">
+	<f:entry title="API token" field="meterianAPIToken" description="Enter a Meterian API token associated to your account">
       <f:textbox />
     </f:entry>
 	<f:entry title="Client JVM args" field="jvmArgs" description="Set of JVM args for the Meterian client">
@@ -12,7 +12,7 @@
     </f:entry>
     <f:validateButton
        title="${%Test Connection}" progress="${%Testing...}"
-       method="testConnection" with="url,token" />
+       method="testConnection" with="url,meterianAPIToken" />
 
     <f:entry title="Github user" field="meterianGithubUser" description="Enter a valid GitHub user name or organisation that will act as your machine user or bot (as opposed to an account for a human user) [If left empty, defaults to: meterian-bot]">
       <f:textbox />

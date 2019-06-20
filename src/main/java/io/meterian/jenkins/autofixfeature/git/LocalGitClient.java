@@ -153,7 +153,7 @@ public class LocalGitClient {
         return currentBranch;
     }
 
-    private boolean currentBranchWasCreatedByMeterianClient() throws GitAPIException {
+    public boolean currentBranchWasCreatedByMeterianClient() throws GitAPIException {
         Iterable<RevCommit> logs = git.log().call();
         Iterator<RevCommit> iterator = logs.iterator();
         if (iterator.hasNext()) {
@@ -212,6 +212,12 @@ public class LocalGitClient {
                 .filter(this::byLocalFixedBranchName)
                 .collect(Collectors.toList());
         return foundBranches.size() == 0 ? "" : foundBranches.get(0).getName();
+    }
+
+    public List<Ref> findBranchByName(String branchName) throws GitAPIException {
+        return git.branchList()
+                .setContains(branchName)
+                .call();
     }
 
     private String stripOffRefsPrefix(String currentBranch) {

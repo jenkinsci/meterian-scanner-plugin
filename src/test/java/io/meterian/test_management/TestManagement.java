@@ -167,9 +167,10 @@ public class TestManagement {
 
         int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
 
-        assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
-
+        if (exitCode != 0) {
+            jenkinsLogger.println(String.format("We were unable to remove a remote branch %s from the repo, " +
+                            "maybe the branch does not exist or the name has changed", branchName));
+        }
     }
 
     public String getMeterianGithubUser() {

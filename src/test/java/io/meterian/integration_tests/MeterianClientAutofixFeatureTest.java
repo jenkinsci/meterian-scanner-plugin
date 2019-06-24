@@ -65,7 +65,7 @@ public class MeterianClientAutofixFeatureTest {
                 testManagement.getMeterianGithubUser() == null ? "meterian-bot" : testManagement.getMeterianGithubUser(),
                 testManagement.getMeterianGithubEmail() == null ? "bot.github@meterian.io" : testManagement.getMeterianGithubEmail()
         );
-        testManagement.deleteRemoteBranch("fixed-by-meterian-196350c");
+        testManagement.deleteRemoteBranch("fixed-by-meterian-34c579c");
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         testManagement.runMeterianClientAndReportAnalysis(configuration, jenkinsLogger);
@@ -85,7 +85,7 @@ public class MeterianClientAutofixFeatureTest {
                 "MeterianHQ/autofix-sample-maven-upgrade.git",
                 "[meterian] Full report available at: ",
                 "[meterian] Build successful!",
-                "[meterian] Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-196350c."
+                "[meterian] Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-34c579c."
             },
             new String[]{
                 "Meterian client analysis failed with exit code ",
@@ -98,13 +98,13 @@ public class MeterianClientAutofixFeatureTest {
     @Test
     public void scenario2_givenMeterianClientHasBeenRunAsInStep1_whenMeterianClientIsReRunWithAutofixOptionOnAMeterianFixedBranch_thenItShouldDoNothing() throws IOException, GitAPIException {
         // Given: the Meterian Client has been run once before (in step 1 of the test)
-        // a local branch called fixed-by-meterian-196350c already exists
-        // a remote branch called fixed-by-meterian-196350c already exists
-        // a pull request attached to remote branch fixed-by-meterian-196350c also exists
-        // and the current branch is fixed-by-meterian-196350c
-        testManagement.checkoutBranch("fixed-by-meterian-196350c");
+        // a local branch called ® already exists
+        // a remote branch called fixed-by-meterian-34c579c already exists
+        // a pull request attached to remote branch fixed-by-meterian-34c579c also exists
+        // and the current branch is fixed-by-meterian-34c579c
+        testManagement.checkoutBranch("fixed-by-meterian-34c579c");
 
-        // When: meterian client is run on the current branch 'fixed-by-meterian-196350c' (which has already been fixed before)
+        // When: meterian client is run on the current branch 'ixed-by-meterian-34c579c' (which has already been fixed before)
         testManagement.runMeterianClientAndReportAnalysis(configuration, jenkinsLogger);
 
         // Then: we should be able to see the expected output in the execution analysis output logs and no action should
@@ -114,12 +114,12 @@ public class MeterianClientAutofixFeatureTest {
         // build should NOT break
         testManagement.verifyRunAnalysisLogs(logFile,
             new String[]{
-                "Warning: fixed-by-meterian-196350c is already fixed, no need to do anything",
+                "Warning: fixed-by-meterian-34c579c is already fixed, no need to do anything",
             },
             new String[]{
                 "No changes found (no fixes generated), no branch to push to the remote repo.",
-                "[meterian] Warning: fixed-by-meterian-196350c already exists in the remote repo, skipping the remote branch creation process.",
-                "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-196350c",
+                "[meterian] Warning: fixed-by-meterian-34c579c already exists in the remote repo, skipping the remote branch creation process.",
+                "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-34c579c",
                 "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point).",
                 "Meterian client analysis failed with exit code ",
                 "[meterian] Breaking build",
@@ -131,11 +131,11 @@ public class MeterianClientAutofixFeatureTest {
     @Test
     public void scenario3_givenMeterianClientHasBeenRunAsInStep1_whenMeterianClientIsReRunWithAutofixOptionOnTheSameBranch_thenItShouldDoNothingBuildShouldFail() throws IOException, GitAPIException {
         // Given: the Meterian Client has been run once before (in step 1 of the test)
-        // a local branch called 'master' and has a local fixed branch called fixed-by-meterian-196350c,
+        // a local branch called 'master' and has a local fixed branch called fixed-by-meterian-34c579c,
         // may or may not have a remote branch with the same name and/or a pull request attached to remote branch
-        // fixed-by-meterian-196350c
+        // fixed-by-meterian-34c579c
         testManagement.resetBranch("master");
-        String expectedBranch = "fixed-by-meterian-196350c";
+        String expectedBranch = "fixed-by-meterian-34c579c";
         assertThat("Cannot run the test as the expected branch "+ expectedBranch + " does not exists",
                 testManagement.branchExists(expectedBranch), is(true));
 
@@ -148,9 +148,9 @@ public class MeterianClientAutofixFeatureTest {
         // build should break, since the pull request is not yet merged (pending merge)
         testManagement.verifyRunAnalysisLogs(logFile,
                 new String[]{
-                        "[meterian] Warning: refs/heads/fixed-by-meterian-196350c already exists in the local repo, skipping the local branch creation process",
+                        "[meterian] Warning: refs/heads/fixed-by-meterian-34c579c already exists in the local repo, skipping the local branch creation process",
                         "No changes found (no fixes generated), no branch to push to the remote repo.",
-                        "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-196350c",
+                        "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-34c579c",
                         "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point).",
                         "[meterian] Breaking build"
                 },

@@ -173,6 +173,25 @@ public class TestManagement {
         }
     }
 
+    public String getFixedByMeterianBranchName(String repoWorkspace, String branch) throws Exception {
+        try {
+            LocalGitClient gitClient = new LocalGitClient(
+                    repoWorkspace,
+                    getMeterianGithubUser(),
+                    getMeterianGithubEmail(),
+                    jenkinsLogger
+            );
+
+            gitClient.checkoutBranch(branch);
+            return String.format("fixed-by-meterian-%s", gitClient.getCurrentBranchSHA());
+        } catch (Exception ex) {
+            jenkinsLogger.println(String.format(
+                    "Could not fetch the name of the fixed-by-meterian-xxxx branch, due to error: %s" , ex.getMessage())
+            );
+            throw new Exception(ex);
+        }
+    }
+
     public String getMeterianGithubUser() {
         return getOSEnvSettings().get("METERIAN_GITHUB_USER");
     }

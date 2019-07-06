@@ -35,6 +35,7 @@ public class MeterianClientAutofixFeatureTest {
     private MeterianPlugin.Configuration configuration;
     private EnvVars environment;
 
+    private String githubOrgName = "MeterianHQ";
     private String githubProjectName = "autofix-sample-maven-upgrade";
     private String gitRepoRootFolder = Paths.get(CURRENT_WORKING_DIR, "target/github-repo/").toString();
     private String gitRepoWorkingFolder = Paths.get(gitRepoRootFolder, githubProjectName).toString();
@@ -60,7 +61,7 @@ public class MeterianClientAutofixFeatureTest {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
-        testManagement.performCloneGitRepo("MeterianHQ", githubProjectName, gitRepoRootFolder, "master");
+        testManagement.performCloneGitRepo(githubOrgName, githubProjectName, gitRepoRootFolder, "master");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         testManagement.configureGitUserNameAndEmail(
@@ -85,10 +86,11 @@ public class MeterianClientAutofixFeatureTest {
                 "[meterian] Autofix applied, will run the build again.",
                 "[meterian] Project information:",
                 "[meterian] JAVA scan -",
-                "MeterianHQ/autofix-sample-maven-upgrade.git",
+                String.format("%s/%s.git", githubOrgName, githubProjectName),
                 "[meterian] Full report available at: ",
                 "[meterian] Build successful!",
-                String.format("[meterian] Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: %s.", fixedByMeterianBranchName)
+                String.format("[meterian] Finished creating pull request for org: %s, repo: %s/%s, branch: %s.",
+                        githubOrgName, githubOrgName, githubProjectName, fixedByMeterianBranchName)
             },
             new String[]{
                 "Meterian client analysis failed with exit code ",
@@ -123,8 +125,9 @@ public class MeterianClientAutofixFeatureTest {
             new String[]{
                 "No changes found (no fixes generated), no branch to push to the remote repo.",
                 String.format("[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.", fixedByMeterianBranchName),
-                String.format("[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: %s", fixedByMeterianBranchName),
-                "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point).",
+                String.format("[meterian] Warning: Found 1 pull request(s) for org: %s, repo: %s/%s, branch: %s",
+                        githubOrgName, githubOrgName, githubProjectName, fixedByMeterianBranchName),
+                "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fix already generated for current branch (commit point).",
                 "Meterian client analysis failed with exit code ",
                 "[meterian] Breaking build",
                 "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
@@ -139,9 +142,9 @@ public class MeterianClientAutofixFeatureTest {
         // may or may not have a remote branch with the same name and/or a pull request attached to remote branch
         // fixed-by-meterian-xxxx
         testManagement.resetBranch("master");
-        fixedByMeterianBranchName = testManagement.getFixedByMeterianBranchName(gitRepoWorkingFolder,"master");
         assertThat(String.format("Cannot run the test as the expected branch %s does not exists", fixedByMeterianBranchName),
                 testManagement.branchExists(fixedByMeterianBranchName), is(true));
+        fixedByMeterianBranchName = testManagement.getFixedByMeterianBranchName(gitRepoWorkingFolder,"master");
 
         // When: meterian client is run on the current branch 'master' (which has already has a fixed local branch)
         testManagement.runMeterianClientAndReportAnalysis(configuration, jenkinsLogger);
@@ -152,10 +155,11 @@ public class MeterianClientAutofixFeatureTest {
         // build should break, since the pull request is not yet merged (pending merge)
         testManagement.verifyRunAnalysisLogs(logFile,
                 new String[]{
-                        String.format("[meterian] Warning: refs/heads/%s already exists in the local repo, skipping the local branch creation process", fixedByMeterianBranchName),
+                        String.format("[meterian] Warning: %s already exists in the local repo, skipping the local branch creation process", fixedByMeterianBranchName),
                         "No changes found (no fixes generated), no branch to push to the remote repo.",
-                        String.format("[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: %s", fixedByMeterianBranchName),
-                        "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point).",
+                        "[meterian] Warning: Found a pull request (id:",
+                        String.format(" for org: %s, repo: %s/%s, branch: %s", githubOrgName, githubOrgName, githubProjectName, fixedByMeterianBranchName),
+                        "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fix already generated for current branch (commit point).",
                         "[meterian] Breaking build"
                 },
                 new String[]{
@@ -170,7 +174,7 @@ public class MeterianClientAutofixFeatureTest {
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
         testManagement.performCloneGitRepo(
-                "MeterianHQ", githubProjectName, gitRepoRootFolder, "partially-fixed-by-autofix");
+                githubOrgName, githubProjectName, gitRepoRootFolder, "partially-fixed-by-autofix");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         testManagement.configureGitUserNameAndEmail(
@@ -194,7 +198,7 @@ public class MeterianClientAutofixFeatureTest {
                         "[meterian] Autofix applied, will run the build again.",
                         "[meterian] Project information:",
                         "[meterian] JAVA scan -",
-                        "MeterianHQ/autofix-sample-maven-upgrade.git",
+                        String.format("%s/%s.git", githubOrgName, githubProjectName),
                         "[meterian] Execution successful!",
                         "[meterian] Build unsuccessful!",
                         "[meterian] Failed checks: [security]",
@@ -203,11 +207,11 @@ public class MeterianClientAutofixFeatureTest {
                         "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
                 },
                 new String[]{
-                        "Finished creating pull request for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-",
+                        String.format("Finished creating pull request for org: %s, repo: %s/%s, branch: fixed-by-meterian-", githubOrgName, githubOrgName, githubProjectName),
                         "[meterian] Warning: fixed-by-meterian-" +
                         "already exists in the remote repo, skipping the remote branch creation process.",
-                        "[meterian] Warning: Found 1 pull request(s) for org: MeterianHQ, repo: MeterianHQ/autofix-sample-maven-upgrade, branch: fixed-by-meterian-",
-                        "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fixed already generated for current branch (commit point)."
+                        String.format("[meterian] Warning: Found 1 pull request(s) for org: %s, repo: %s/%s, branch: fixed-by-meterian-", githubOrgName, githubOrgName, githubProjectName),
+                        "[meterian] Warning: Pull request already exists for this branch, no new pull request will be created. Fix already generated for current branch (commit point)."
                 }
         );
         LocalGitClient gitClient = new LocalGitClient(

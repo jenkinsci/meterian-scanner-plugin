@@ -227,7 +227,7 @@ public class LocalGitClient {
                 .replace("origin/", "");
     }
 
-    private String getCurrentBranchSHA() throws IOException {
+    public String getCurrentBranchSHA() throws IOException {
         String longSha = Objects.requireNonNull(getHeadRef())
                 .getObjectId()
                 .getName();

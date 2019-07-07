@@ -167,9 +167,29 @@ public class TestManagement {
 
         int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
 
-        assertThat("Cannot run the test, as we were unable to remove a remote branch from a repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
+        if (exitCode != 0) {
+            jenkinsLogger.println(String.format("We were unable to remove a remote branch %s from the repo, " +
+                            "maybe the branch does not exist or the name has changed", branchName));
+        }
+    }
 
+    public String getFixedByMeterianBranchName(String repoWorkspace, String branch) throws Exception {
+        try {
+            LocalGitClient gitClient = new LocalGitClient(
+                    repoWorkspace,
+                    getMeterianGithubUser(),
+                    getMeterianGithubEmail(),
+                    jenkinsLogger
+            );
+
+            gitClient.checkoutBranch(branch);
+            return String.format("fixed-by-meterian-%s", gitClient.getCurrentBranchSHA());
+        } catch (Exception ex) {
+            jenkinsLogger.println(String.format(
+                    "Could not fetch the name of the fixed-by-meterian-xxxx branch, due to error: %s" , ex.getMessage())
+            );
+            throw new Exception(ex);
+        }
     }
 
     public String getMeterianGithubUser() {

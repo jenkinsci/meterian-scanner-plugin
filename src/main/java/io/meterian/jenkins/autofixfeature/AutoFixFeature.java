@@ -43,10 +43,12 @@ public class AutoFixFeature {
     }
 
     public void execute() throws Exception {
+        String targetBranchToWorkOn = localGitClient.getCurrentBranch();
         try {
             if (localGitClient.currentBranchWasCreatedByMeterianClient()) {
+                targetBranchToWorkOn = localGitClient.getCurrentBranch();
                 String thisBranchIsFixedMessage = String.format(
-                        BRANCH_ALREADY_FIXED_WARNING, localGitClient.getCurrentBranch()
+                        BRANCH_ALREADY_FIXED_WARNING, targetBranchToWorkOn
                 );
                 log.warn(thisBranchIsFixedMessage);
                 jenkinsLogger.println(thisBranchIsFixedMessage);
@@ -64,11 +66,16 @@ public class AutoFixFeature {
             } else {
                 clientRunner.breakBuild();
 
+                targetBranchToWorkOn = localGitClient.getFixedBranchNameForCurrentBranch()
+                                                     .replace("refs/heads/", "");
+
                 String fixedBranchExistsMessage = String.format(
-                        LOCAL_BRANCH_ALREADY_EXISTS_WARNING, localGitClient.getFixedBranchNameForCurrentBranch()
+                        LOCAL_BRANCH_ALREADY_EXISTS_WARNING, targetBranchToWorkOn
                 );
                 log.warn(fixedBranchExistsMessage);
                 jenkinsLogger.println(fixedBranchExistsMessage);
+
+                localGitClient.checkoutBranch(targetBranchToWorkOn);
             }
         } catch (Exception ex) {
             log.error(String.format("Checking for branch or running the Meterian client was not successful due to: %s", ex.getMessage()), ex);
@@ -78,6 +85,7 @@ public class AutoFixFeature {
         try {
             if (localGitClient.hasChanges()) {
                 localGitClient.applyCommitsToLocalRepo();
+                targetBranchToWorkOn = localGitClient.getCurrentBranch();
             } else {
                 log.warn(LocalGitClient.NO_CHANGES_FOUND_WARNING);
                 jenkinsLogger.println(LocalGitClient.NO_CHANGES_FOUND_WARNING);
@@ -96,7 +104,7 @@ public class AutoFixFeature {
                     localGitClient.getRepositoryName(),
                     jenkinsLogger
             );
-            localGitHubClient.createPullRequest(localGitClient.getCurrentBranch());
+            localGitHubClient.createPullRequest(targetBranchToWorkOn);
         } catch (Exception ex) {
             log.error(String.format("Pull Request was not created, due to the error: %s", ex.getMessage()), ex);
             throw new RuntimeException(ex);

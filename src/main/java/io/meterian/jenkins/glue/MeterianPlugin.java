@@ -15,6 +15,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.verb.POST;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,11 +130,12 @@ public class MeterianPlugin extends Builder {
             this.meterianGithubEmail = meterianGithubEmail;
             this.meterianGithubToken = toSecret(meterianGithubToken);
 
-            log.info("Read configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
-                    url, jvmArgs, mask(meterianAPIToken),
+            log.info("Read configuration \nurl: [{}]\njvm: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]",
+                    url, 
+                    jvmArgs, 
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
-                    meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
-                    mask(meterianGithubToken));
+                    meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail
+                );
         }
 
         private Secret toSecret(String data) {
@@ -171,21 +173,13 @@ public class MeterianPlugin extends Builder {
             meterianGithubToken = toSecret(parseEmpty(formData.getString("meterianGithubToken"), ""));
 
             save();
-            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
-                    url, jvmArgs, mask(toPlainText(meterianAPIToken)),
+            log.info("Stored configuration \nurl: [{}]\njvm: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]",
+                    url, jvmArgs,
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
-                    meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
-                    mask(toPlainText(meterianGithubToken))
-            );
+                    meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail
+                );
 
             return super.configure(req, formData);
-        }
-
-        private String mask(String data) {
-            if (data == null)
-                return null;
-            else
-                return data.substring(0, Math.min(4, data.length() / 5)) + "...";
         }
 
         public String getUrl() {
@@ -222,6 +216,7 @@ public class MeterianPlugin extends Builder {
             return parseEmpty(url, DEFAULT_BASE_URL);
         }
 
+        @POST
         public FormValidation doTestConnection(
                 @QueryParameter("url") String testUrl,
                 @QueryParameter("meterianAPIToken") String testToken

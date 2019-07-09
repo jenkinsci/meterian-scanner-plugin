@@ -226,15 +226,14 @@ public class MeterianPlugin extends Builder {
             
             String apiUrl = computeFinalUrl(testUrl);
             String apiToken = computeFinalToken(testToken);
-            log.info("The url to verify is [{}], the token is [{}]", apiUrl, apiToken);
+            log.info("The url to verify is [{}], the token is [{}]", apiUrl, (apiToken == null ? "null" : "valid"));
 
             try {
                 HttpClient client = new HttpClientFactory().newHttpClient(this);
                 HttpGet request = new HttpGet(new URI(makeUrl(apiUrl, "/api/v1/accounts/me")));
                 if (apiToken != null) {
-                    String auth = "Token " + apiToken;
-                    log.info("Using auth [{}]", auth);
-                    request.addHeader("Authorization", auth);
+                    log.info("Using auth token");
+                    request.addHeader("Authorization", "Token " + apiToken);
                 }
 
                 HttpResponse response = client.execute(request);

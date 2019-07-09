@@ -1,8 +1,31 @@
 package io.meterian.test_management;
 
+import static junit.framework.TestCase.fail;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Map;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.output.NullOutputStream;
+import org.apache.http.client.HttpClient;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
+import static org.mockito.Mockito.*;
+import org.slf4j.Logger;
+
 import com.meterian.common.system.LineGobbler;
 import com.meterian.common.system.OS;
 import com.meterian.common.system.Shell;
+
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
@@ -14,24 +37,6 @@ import io.meterian.jenkins.glue.executors.MeterianExecutor;
 import io.meterian.jenkins.glue.executors.StandardExecutor;
 import io.meterian.jenkins.io.ClientDownloader;
 import io.meterian.jenkins.io.HttpClientFactory;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.output.NullOutputStream;
-import org.apache.http.client.HttpClient;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.slf4j.Logger;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Paths;
-import java.util.Map;
-
-import static junit.framework.TestCase.fail;
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
 
 public class TestManagement {
 
@@ -223,14 +228,20 @@ public class TestManagement {
             jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
-        return new MeterianPlugin.Configuration(
+        MeterianPlugin.Configuration standardConfiguration = new MeterianPlugin.Configuration(
                 BASE_URL,
-                meterianAPIToken,
+                "",
                 NO_JVM_ARGS,
                 meterianGithubUser,
                 meterianGithubEmail,
-                meterianGithubToken
+                ""
         );
+
+        MeterianPlugin.Configuration configuration = spy(standardConfiguration);
+        when(configuration.getMeterianAPIToken()).thenReturn(meterianAPIToken);
+        when(configuration.getMeterianGithubToken()).thenReturn(meterianGithubToken);
+
+        return configuration;
     }
 
     public File getClientJar() throws IOException {
@@ -272,7 +283,7 @@ public class TestManagement {
         return new PrintStream(new NullOutputStream());
     }
 
-    public static HttpClient newHttpClient() {
+    public HttpClient newHttpClient() {
         return new HttpClientFactory().newHttpClient(new HttpClientFactory.Config() {
             @Override
             public int getHttpConnectTimeout() {

@@ -1,5 +1,23 @@
 package io.meterian.jenkins.glue;
 
+import static io.meterian.jenkins.glue.Facade.getConfiguration;
+import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.URI;
+
+import javax.servlet.ServletException;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
@@ -10,28 +28,14 @@ import hudson.model.FreeStyleProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import hudson.util.Secret;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
-import io.meterian.jenkins.glue.executors.SimpleOrFreeStyleExecutor;
+import io.meterian.jenkins.glue.executors.StandardExecutor;
 import io.meterian.jenkins.io.HttpClientFactory;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.servlet.ServletException;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.URI;
-
-import static io.meterian.jenkins.glue.Toilet.getConfiguration;
-import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
 
 
 @SuppressWarnings("rawtypes")
@@ -75,8 +79,7 @@ public class MeterianPlugin extends Builder {
 
         client.prepare("--interactive=false");
 
-        ClientRunner clientRunner =
-                new ClientRunner(client, build, jenkinsLogger);
+        ClientRunner clientRunner = new ClientRunner(client, build, jenkinsLogger);
         AutoFixFeature autoFixFeature = new AutoFixFeature(
                 configuration,
                 environment,
@@ -84,9 +87,7 @@ public class MeterianPlugin extends Builder {
                 jenkinsLogger
         );
         try {
-            new SimpleOrFreeStyleExecutor(
-                    autoFixFeature, clientRunner
-            ).run(client);
+            new StandardExecutor(clientRunner, autoFixFeature).run(client);
         } catch (Exception ex) {
             log.warn("Unexpected", ex);
             jenkinsLogger.println("Unexpected exception!");
@@ -103,12 +104,12 @@ public class MeterianPlugin extends Builder {
         private static final int ONE_MINUTE = 60 * 1000;
 
         private String url;
-        private String meterianAPIToken;
         private String jvmArgs;
+        private Secret meterianAPIToken;
 
         private String meterianGithubUser;
         private String meterianGithubEmail;
-        private String meterianGithubToken;
+        private Secret meterianGithubToken;
 
         public Configuration() {
             load();
@@ -121,17 +122,30 @@ public class MeterianPlugin extends Builder {
                              String meterianGithubEmail,
                              String meterianGithubToken) {
             this.url = url;
-            this.meterianAPIToken = meterianAPIToken;
             this.jvmArgs = jvmArgs;
+            this.meterianAPIToken = toSecret(meterianAPIToken);
+
             this.meterianGithubUser = meterianGithubUser;
             this.meterianGithubEmail = meterianGithubEmail;
-            this.meterianGithubToken = meterianGithubToken;
+            this.meterianGithubToken = toSecret(meterianGithubToken);
 
             log.info("Read configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
                     url, jvmArgs, mask(meterianAPIToken),
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
                     meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
                     mask(meterianGithubToken));
+        }
+
+        private Secret toSecret(String data) {
+            try {
+                return Secret.fromString(data);
+            } catch (NullPointerException whenRunningOnUnitTest) {
+                return null;
+            }
+        }
+        
+        private String toPlainText(Secret secret) {
+            return (secret == null ? null : secret.getPlainText());
         }
 
         @Override
@@ -146,19 +160,22 @@ public class MeterianPlugin extends Builder {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
+            
+            Facade.checkPermission(Jenkins.ADMINISTER);
+
             url = computeFinalUrl(formData.getString("url"));
-            meterianAPIToken = computeFinalToken(formData.getString("meterianAPIToken"));
+            meterianAPIToken = toSecret(computeFinalToken(formData.getString("meterianAPIToken")));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
             meterianGithubUser = parseEmpty(formData.getString("meterianGithubUser"), "");
             meterianGithubEmail = parseEmpty(formData.getString("meterianGithubEmail"), "");
-            meterianGithubToken = parseEmpty(formData.getString("meterianGithubToken"), "");
+            meterianGithubToken = toSecret(parseEmpty(formData.getString("meterianGithubToken"), ""));
 
             save();
             log.info("Stored configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
-                    url, jvmArgs, mask(meterianAPIToken),
+                    url, jvmArgs, mask(toPlainText(meterianAPIToken)),
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
                     meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
-                    mask(meterianGithubToken)
+                    mask(toPlainText(meterianGithubToken))
             );
 
             return super.configure(req, formData);
@@ -180,9 +197,8 @@ public class MeterianPlugin extends Builder {
         }
 
         public String getMeterianAPIToken() {
-            return meterianAPIToken;
+            return toPlainText(meterianAPIToken);
         }
-
 
         public String getMeterianGithubUser() {
             if ((meterianGithubUser == null) || meterianGithubUser.trim().isEmpty()) {
@@ -199,7 +215,7 @@ public class MeterianPlugin extends Builder {
         }
 
         public String getMeterianGithubToken() {
-            return meterianGithubToken;
+            return toPlainText(meterianGithubToken);
         }
 
         public String getMeterianBaseUrl() {
@@ -211,6 +227,8 @@ public class MeterianPlugin extends Builder {
                 @QueryParameter("meterianAPIToken") String testToken
         ) throws IOException, ServletException {
 
+            Facade.checkPermission(Jenkins.ADMINISTER);
+            
             String apiUrl = computeFinalUrl(testUrl);
             String apiToken = computeFinalToken(testToken);
             log.info("The url to verify is [{}], the token is [{}]", apiUrl, apiToken);
@@ -275,6 +293,5 @@ public class MeterianPlugin extends Builder {
         public String getHttpUserAgent() {
             return "meterian-jenkins_1.0";
         }
-
     }
 }

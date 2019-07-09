@@ -28,6 +28,7 @@ import hudson.model.FreeStyleProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import hudson.util.Secret;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
@@ -103,12 +104,12 @@ public class MeterianPlugin extends Builder {
         private static final int ONE_MINUTE = 60 * 1000;
 
         private String url;
-        private String meterianAPIToken;
         private String jvmArgs;
+        private Secret meterianAPIToken;
 
         private String meterianGithubUser;
         private String meterianGithubEmail;
-        private String meterianGithubToken;
+        private Secret meterianGithubToken;
 
         public Configuration() {
             load();
@@ -121,11 +122,12 @@ public class MeterianPlugin extends Builder {
                              String meterianGithubEmail,
                              String meterianGithubToken) {
             this.url = url;
-            this.meterianAPIToken = meterianAPIToken;
             this.jvmArgs = jvmArgs;
+            this.meterianAPIToken = Secret.fromString(meterianAPIToken);
+
             this.meterianGithubUser = meterianGithubUser;
             this.meterianGithubEmail = meterianGithubEmail;
-            this.meterianGithubToken = meterianGithubToken;
+            this.meterianGithubToken = Secret.fromString(meterianGithubToken);
 
             log.info("Read configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
                     url, jvmArgs, mask(meterianAPIToken),
@@ -150,18 +152,18 @@ public class MeterianPlugin extends Builder {
             Facade.checkPermission(Jenkins.ADMINISTER);
 
             url = computeFinalUrl(formData.getString("url"));
-            meterianAPIToken = computeFinalToken(formData.getString("meterianAPIToken"));
+            meterianAPIToken = Secret.fromString(computeFinalToken(formData.getString("meterianAPIToken")));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
             meterianGithubUser = parseEmpty(formData.getString("meterianGithubUser"), "");
             meterianGithubEmail = parseEmpty(formData.getString("meterianGithubEmail"), "");
-            meterianGithubToken = parseEmpty(formData.getString("meterianGithubToken"), "");
+            meterianGithubToken = Secret.fromString(parseEmpty(formData.getString("meterianGithubToken"), ""));
 
             save();
             log.info("Stored configuration \nurl: [{}]\njvm: [{}]\nmeterianAPIToken: [{}]\nmeterianGithubUser: [{}]\nmeterianGithubEmail: [{}]\nmeterianGithubToken: [{}]",
-                    url, jvmArgs, mask(meterianAPIToken),
+                    url, jvmArgs, mask(meterianAPIToken.getPlainText()),
                     meterianGithubUser == null ? getMeterianGithubUser() + " (default]" : meterianGithubUser,
                     meterianGithubEmail == null ? getMeterianGithubEmail() + " ([default)" : meterianGithubEmail,
-                    mask(meterianGithubToken)
+                    mask(meterianGithubToken.getPlainText())
             );
 
             return super.configure(req, formData);
@@ -183,7 +185,7 @@ public class MeterianPlugin extends Builder {
         }
 
         public String getMeterianAPIToken() {
-            return meterianAPIToken;
+            return meterianAPIToken.getPlainText();
         }
 
 
@@ -202,7 +204,7 @@ public class MeterianPlugin extends Builder {
         }
 
         public String getMeterianGithubToken() {
-            return meterianGithubToken;
+            return meterianGithubToken.getPlainText();
         }
 
         public String getMeterianBaseUrl() {

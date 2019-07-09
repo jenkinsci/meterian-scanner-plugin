@@ -10,13 +10,14 @@ import org.slf4j.LoggerFactory;
 import java.io.PrintStream;
 import java.util.concurrent.Callable;
 
+@SuppressWarnings("rawtypes")
 public class ClientRunner {
     private static final Logger log = LoggerFactory.getLogger(ClientRunner.class);
 
     private Meterian client;
     private PrintStream jenkinsLogger;
 
-    private Callable setJenkinsBuildToBreak;
+    private Callable<Void> setJenkinsBuildToBreak;
 
     public ClientRunner(Meterian client,
                         AbstractBuild build,

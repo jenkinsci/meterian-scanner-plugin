@@ -19,6 +19,7 @@ import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
+import static org.mockito.Mockito.*;
 import org.slf4j.Logger;
 
 import com.meterian.common.system.LineGobbler;
@@ -227,14 +228,20 @@ public class TestManagement {
             jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
-        return new MeterianPlugin.Configuration(
+        MeterianPlugin.Configuration standardConfiguration = new MeterianPlugin.Configuration(
                 BASE_URL,
-                meterianAPIToken,
+                "",
                 NO_JVM_ARGS,
                 meterianGithubUser,
                 meterianGithubEmail,
-                meterianGithubToken
+                ""
         );
+
+        MeterianPlugin.Configuration configuration = spy(standardConfiguration);
+        when(configuration.getMeterianAPIToken()).thenReturn(meterianAPIToken);
+        when(configuration.getMeterianGithubToken()).thenReturn(meterianGithubToken);
+
+        return configuration;
     }
 
     public File getClientJar() throws IOException {

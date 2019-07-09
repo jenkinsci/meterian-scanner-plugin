@@ -22,7 +22,7 @@ import java.io.PrintStream;
 import java.util.Collections;
 import java.util.Set;
 
-import static io.meterian.jenkins.glue.Toilet.getConfiguration;
+import static io.meterian.jenkins.glue.Facade.getConfiguration;
 
 public class MeterianStep extends Step {
 

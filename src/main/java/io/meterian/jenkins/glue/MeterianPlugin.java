@@ -1,5 +1,23 @@
 package io.meterian.jenkins.glue;
 
+import static io.meterian.jenkins.glue.Facade.getConfiguration;
+import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.URI;
+
+import javax.servlet.ServletException;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
@@ -13,25 +31,10 @@ import hudson.util.FormValidation;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
-import io.meterian.jenkins.glue.executors.SimpleOrFreeStyleExecutor;
+import io.meterian.jenkins.glue.executors.StandardExecutor;
 import io.meterian.jenkins.io.HttpClientFactory;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.servlet.ServletException;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.URI;
-
-import static io.meterian.jenkins.glue.Toilet.getConfiguration;
-import static io.meterian.jenkins.io.HttpClientFactory.makeUrl;
 
 
 @SuppressWarnings("rawtypes")
@@ -75,8 +78,7 @@ public class MeterianPlugin extends Builder {
 
         client.prepare("--interactive=false");
 
-        ClientRunner clientRunner =
-                new ClientRunner(client, build, jenkinsLogger);
+        ClientRunner clientRunner = new ClientRunner(client, build, jenkinsLogger);
         AutoFixFeature autoFixFeature = new AutoFixFeature(
                 configuration,
                 environment,
@@ -84,9 +86,7 @@ public class MeterianPlugin extends Builder {
                 jenkinsLogger
         );
         try {
-            new SimpleOrFreeStyleExecutor(
-                    autoFixFeature, clientRunner
-            ).run(client);
+            new StandardExecutor(clientRunner, autoFixFeature).run(client);
         } catch (Exception ex) {
             log.warn("Unexpected", ex);
             jenkinsLogger.println("Unexpected exception!");
@@ -146,6 +146,9 @@ public class MeterianPlugin extends Builder {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
+            
+            Facade.checkPermission(Jenkins.ADMINISTER);
+
             url = computeFinalUrl(formData.getString("url"));
             meterianAPIToken = computeFinalToken(formData.getString("meterianAPIToken"));
             jvmArgs = parseEmpty(formData.getString("jvmArgs"), "");
@@ -211,6 +214,8 @@ public class MeterianPlugin extends Builder {
                 @QueryParameter("meterianAPIToken") String testToken
         ) throws IOException, ServletException {
 
+            Facade.checkPermission(Jenkins.ADMINISTER);
+            
             String apiUrl = computeFinalUrl(testUrl);
             String apiToken = computeFinalToken(testToken);
             log.info("The url to verify is [{}], the token is [{}]", apiUrl, apiToken);
@@ -275,6 +280,5 @@ public class MeterianPlugin extends Builder {
         public String getHttpUserAgent() {
             return "meterian-jenkins_1.0";
         }
-
     }
 }

@@ -179,10 +179,12 @@ public class TestManagement {
                     .setRefSpecs(refSpec)
                     .setRemote("origin")
                     .call();
+            log.info(String.format("Successfully removed remote branch %s from the repo", branchName));
         } catch (IOException | GitAPIException ex) {
             log.warn(
                     String.format("We were unable to remove a remote branch %s from the repo, " +
-                            "maybe the branch does not exist or the name has changed", branchName));
+                            "maybe the branch does not exist or the name has changed", branchName)
+            );
         }
     }
 

@@ -17,7 +17,11 @@ import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import static org.mockito.Mockito.*;
 import org.slf4j.Logger;
@@ -48,6 +52,7 @@ public class TestManagement {
     private PrintStream jenkinsLogger;
     private EnvVars environment;
     private LocalGitClient gitClient;
+    private CredentialsProvider credentialsProvider;
 
     public TestManagement(String gitRepoWorkingFolder,
                           Logger log,
@@ -130,19 +135,20 @@ public class TestManagement {
                 exitCode, exitCode, is(equalTo(0)));
     }
 
-    public void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "clone",
-                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName), // only use ssh or git protocol and not https - uses ssh keys to authenticate
-                "-b",
-                branch
-        };
-
-        int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);
-
-        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
+    public void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) {
+        String repoURI = String.format(
+                "git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName);
+        try {
+            Git.cloneRepository()
+                    .setCredentialsProvider(credentialsProvider)
+                    .setURI(repoURI)
+                    .setBranch(branch)
+                    .setDirectory(new File(workingFolder))
+                    .call();
+        } catch (Exception ex) {
+            fail(String.format("Cannot run the test, as we were unable to clone the target git repo due to an error: %s (cause: %s)",
+                    ex.getMessage(), ex.getCause()));
+        }
     }
 
     public boolean branchExists(String branchName) throws GitAPIException {
@@ -162,18 +168,20 @@ public class TestManagement {
                         .replace("refs/heads/", ""))));
     }
 
-    public void deleteRemoteBranch(String branchName) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "push",
-                "origin",
-                ":" + branchName
-        };
-
-        int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
-
-        if (exitCode != 0) {
-            jenkinsLogger.println(String.format("We were unable to remove a remote branch %s from the repo, " +
+    public void deleteRemoteBranch(String workingFolder, String branchName) {
+        try {
+            Git git = Git.open(new File(workingFolder));
+            RefSpec refSpec = new RefSpec()
+                    .setSource(null)
+                    .setDestination("refs/heads/" + branchName);
+            git.push()
+                    .setCredentialsProvider(credentialsProvider)
+                    .setRefSpecs(refSpec)
+                    .setRemote("origin")
+                    .call();
+        } catch (IOException | GitAPIException ex) {
+            log.warn(
+                    String.format("We were unable to remove a remote branch %s from the repo, " +
                             "maybe the branch does not exist or the name has changed", branchName));
         }
     }
@@ -183,6 +191,7 @@ public class TestManagement {
             LocalGitClient gitClient = new LocalGitClient(
                     repoWorkspace,
                     getMeterianGithubUser(),
+                    getMeterianGithubToken(),
                     getMeterianGithubEmail(),
                     jenkinsLogger
             );
@@ -199,6 +208,10 @@ public class TestManagement {
 
     public String getMeterianGithubUser() {
         return getOSEnvSettings().get("METERIAN_GITHUB_USER");
+    }
+
+    public String getMeterianGithubToken() {
+        return getOSEnvSettings().get("METERIAN_GITHUB_TOKEN");
     }
 
     public String getMeterianGithubEmail() {
@@ -227,6 +240,10 @@ public class TestManagement {
         if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
             jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
+
+        // See https://www.codeaffine.com/2014/12/09/jgit-authentication/ for explanation on why this is allowed
+        // First argument of UsernamePasswordCredentialsProvider is the token, the second argument is empty/blank
+        credentialsProvider = new UsernamePasswordCredentialsProvider(meterianGithubToken, "");
 
         MeterianPlugin.Configuration standardConfiguration = new MeterianPlugin.Configuration(
                 BASE_URL,
@@ -317,6 +334,7 @@ public class TestManagement {
             gitClient = new LocalGitClient(
                     gitRepoWorkingFolder,
                     getMeterianGithubUser(),
+                    getMeterianGithubToken(),
                     getMeterianGithubEmail(),
                     jenkinsLogger
             );

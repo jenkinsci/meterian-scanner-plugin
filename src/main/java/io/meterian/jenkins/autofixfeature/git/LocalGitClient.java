@@ -8,7 +8,9 @@ import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.RemoteConfig;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,11 +38,17 @@ public class LocalGitClient {
     private Git git;
     private String currentBranch;
 
+    private CredentialsProvider credentialsProvider;
+
 
     public LocalGitClient(String pathToRepo,
                           String meterianGithubUser,
+                          String meterianGithubToken,
                           String meterianGithubEmail,
                           PrintStream jenkinsLogger) {
+        credentialsProvider = new UsernamePasswordCredentialsProvider(
+                meterianGithubToken, "");
+
         this.meterianGithubUser = meterianGithubUser;
         this.meterianGithubEmail = meterianGithubEmail;
 
@@ -104,7 +112,9 @@ public class LocalGitClient {
                         .call();
                 if (meterianRemoteBranchDoesNotExists()) {
                     log.info(String.format("Branch %s does not exist in remote repo, started pushing branch", currentBranch));
-                    git().push().call();
+                    git().push()
+                            .setCredentialsProvider(credentialsProvider)
+                            .call();
                     log.info("Finished pushing branch to remote repo");
                 } else {
                     String branchAlreadyExistsWarning = String.format(REMOTE_BRANCH_ALREADY_EXISTS_WARNING, currentBranch);
@@ -115,8 +125,9 @@ public class LocalGitClient {
                 log.debug("Current branch was not created by Meterian");
             }
         } catch (Exception ex) {
-            String couldNotPushDueToError = String.format("Could not push branch %s to remote repo due to error: %s", currentBranch, ex.getMessage());
-            log.debug(couldNotPushDueToError);
+            String couldNotPushDueToError =
+                    String.format("Could not push branch %s to remote repo due to error: %s", currentBranch, ex.getMessage());
+            log.error(couldNotPushDueToError, ex);
             jenkinsLogger.println(couldNotPushDueToError);
 
             throw new RuntimeException(ex);

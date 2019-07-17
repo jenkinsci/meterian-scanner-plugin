@@ -61,7 +61,7 @@ public class MeterianClientAutofixFeatureTest {
         // Given: we are setup to run the meterian client against a repo that has vulnerabilities
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
-        testManagement.performCloneGitRepo(githubOrgName, githubProjectName, gitRepoRootFolder, "master");
+        testManagement.performCloneGitRepo(githubOrgName, githubProjectName, gitRepoWorkingFolder, "master");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         testManagement.configureGitUserNameAndEmail(
@@ -69,7 +69,7 @@ public class MeterianClientAutofixFeatureTest {
                 testManagement.getMeterianGithubEmail() == null ? "bot.github@meterian.io" : testManagement.getMeterianGithubEmail()
         );
         fixedByMeterianBranchName = testManagement.getFixedByMeterianBranchName(gitRepoWorkingFolder,"master");
-        testManagement.deleteRemoteBranch(fixedByMeterianBranchName);
+        testManagement.deleteRemoteBranch(gitRepoWorkingFolder, fixedByMeterianBranchName);
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         testManagement.runMeterianClientAndReportAnalysis(configuration, jenkinsLogger);
@@ -174,7 +174,7 @@ public class MeterianClientAutofixFeatureTest {
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
         testManagement.performCloneGitRepo(
-                githubOrgName, githubProjectName, gitRepoRootFolder, "partially-fixed-by-autofix");
+                githubOrgName, githubProjectName, gitRepoWorkingFolder, "partially-fixed-by-autofix");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         testManagement.configureGitUserNameAndEmail(
@@ -217,6 +217,7 @@ public class MeterianClientAutofixFeatureTest {
         LocalGitClient gitClient = new LocalGitClient(
                 environment.get("WORKSPACE"),
                 testManagement.getMeterianGithubUser(),
+                testManagement.getMeterianGithubToken(),
                 testManagement.getMeterianGithubEmail(),
                 jenkinsLogger
         );

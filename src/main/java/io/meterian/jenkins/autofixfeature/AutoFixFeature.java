@@ -38,6 +38,7 @@ public class AutoFixFeature {
         localGitClient = new LocalGitClient(
                 environment.get("WORKSPACE"),
                 configuration.getMeterianGithubUser(),
+                configuration.getMeterianGithubToken(),
                 configuration.getMeterianGithubEmail(),
                 jenkinsLogger);
     }

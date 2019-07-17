@@ -135,12 +135,16 @@ public class TestManagement {
                 exitCode, exitCode, is(equalTo(0)));
     }
 
-    public void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) {
+    public void performCloneGitRepo(String githubProjectName,
+                                    String githubOrgOrUserName,
+                                    String workingFolder,
+                                    String branch) {
         String repoURI = String.format(
-                "git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName);
+                "https://github.com/%s/%s.git",
+                githubOrgOrUserName,
+                githubProjectName);
         try {
             Git.cloneRepository()
-                    .setTransportConfigCallback(getTransportConfigCallback())
                     .setCredentialsProvider(credentialsProvider)
                     .setURI(repoURI)
                     .setBranch(branch)
@@ -176,7 +180,6 @@ public class TestManagement {
                     .setSource(null)
                     .setDestination("refs/heads/" + branchName);
             git.push()
-                    .setTransportConfigCallback(getTransportConfigCallback())
                     .setCredentialsProvider(credentialsProvider)
                     .setRefSpecs(refSpec)
                     .setRemote("origin")
@@ -188,18 +191,6 @@ public class TestManagement {
                             "maybe the branch does not exist or the name has changed", branchName)
             );
         }
-    }
-
-    private TransportConfigCallback getTransportConfigCallback() {
-        return transport -> {
-            SshTransport sshTransport = ( SshTransport )transport;
-            sshTransport.setSshSessionFactory( new JschConfigSessionFactory() {
-                @Override
-                protected void configure(OpenSshConfig.Host host, Session session) {
-                    session.setPassword(getMeterianGithubToken());
-                }
-            });
-        };
     }
 
     public String getFixedByMeterianBranchName(String repoWorkspace, String branch) throws Exception {
@@ -257,7 +248,9 @@ public class TestManagement {
             jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
 
-        // See https://www.codeaffine.com/2014/12/09/jgit-authentication/ for explanation on why this is allowed
+        // See https://www.codeaffine.com/2014/12/09/jgit-authentication/ or
+        // https://github.blog/2012-09-21-easier-builds-and-deployments-using-git-over-https-and-oauth/
+        // for explanation on why this is allowed
         // First argument of UsernamePasswordCredentialsProvider is the token, the second argument is empty/blank
         credentialsProvider = new UsernamePasswordCredentialsProvider(meterianGithubToken, "");
 

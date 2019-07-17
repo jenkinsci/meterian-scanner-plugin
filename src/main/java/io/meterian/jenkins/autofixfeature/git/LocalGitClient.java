@@ -1,17 +1,16 @@
 package io.meterian.jenkins.autofixfeature.git;
 
-import com.jcraft.jsch.Session;
-import com.jcraft.jsch.UserInfo;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.ResetCommand;
-import org.eclipse.jgit.api.TransportConfigCallback;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.transport.*;
+import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.RemoteConfig;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +30,6 @@ public class LocalGitClient {
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
 
     private final String meterianGithubUser;  // Machine User name
-    private final String meterianGithubToken; // Machine User token
     private final String meterianGithubEmail; // Email associated with the Machine User
     private final String pathToRepo;
 
@@ -48,10 +46,13 @@ public class LocalGitClient {
                           String meterianGithubToken,
                           String meterianGithubEmail,
                           PrintStream jenkinsLogger) {
+        // See https://www.codeaffine.com/2014/12/09/jgit-authentication/ or
+        // https://github.blog/2012-09-21-easier-builds-and-deployments-using-git-over-https-and-oauth/
+        // for explanation on why this is allowed
+        // First argument of UsernamePasswordCredentialsProvider is the token, the second argument is empty/blank
         credentialsProvider = new UsernamePasswordCredentialsProvider(
                 meterianGithubToken, "");
 
-        this.meterianGithubToken = meterianGithubToken;
         this.meterianGithubUser = meterianGithubUser;
         this.meterianGithubEmail = meterianGithubEmail;
 
@@ -62,9 +63,13 @@ public class LocalGitClient {
     }
 
     public String getRepositoryName() throws GitAPIException {
-        List<RemoteConfig> remoteConfigList = git().remoteList().call();
+        List<RemoteConfig> remoteConfigList = git.remoteList().call();
         if ((remoteConfigList != null) && (remoteConfigList.size() > 0)) {
             String rawPath = remoteConfigList.get(0).getURIs().get(0).getRawPath();
+
+            if (rawPath.startsWith("/")) {
+                rawPath = rawPath.substring(1);
+            }
             return rawPath.replace(".git", "");
         }
         return "";
@@ -116,7 +121,6 @@ public class LocalGitClient {
                 if (meterianRemoteBranchDoesNotExists()) {
                     log.info(String.format("Branch %s does not exist in remote repo, started pushing branch", currentBranch));
                     git().push()
-                            .setTransportConfigCallback(getTransportConfigCallback())
                             .setCredentialsProvider(credentialsProvider)
                             .call();
                     log.info("Finished pushing branch to remote repo");
@@ -136,18 +140,6 @@ public class LocalGitClient {
 
             throw new RuntimeException(ex);
         }
-    }
-
-    private TransportConfigCallback getTransportConfigCallback() {
-        return transport -> {
-            SshTransport sshTransport = ( SshTransport )transport;
-            sshTransport.setSshSessionFactory( new JschConfigSessionFactory() {
-                @Override
-                protected void configure(OpenSshConfig.Host host, Session session) {
-                    session.setPassword(meterianGithubToken);
-                }
-            });
-        };
     }
 
     public String getCurrentBranch() throws IOException, GitAPIException {
@@ -335,7 +327,7 @@ public class LocalGitClient {
         if (this.git == null)
             try {
                 this.git = Git.open(new File(pathToRepo));
-                log.info(String.format("Workspace is pointing to branch %s (%s)", currentBranch, getCurrentBranchSHA()));
+                log.info(String.format("Workspace is pointing to branch %s (%s)", getCurrentBranch(), getCurrentBranchSHA()));
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }

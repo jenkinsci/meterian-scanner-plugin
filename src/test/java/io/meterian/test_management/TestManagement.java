@@ -18,8 +18,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
 import org.eclipse.jgit.api.Git;
-import com.jcraft.jsch.Session;
-import org.eclipse.jgit.api.TransportConfigCallback;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.transport.*;
 import org.jenkinsci.plugins.workflow.steps.StepContext;

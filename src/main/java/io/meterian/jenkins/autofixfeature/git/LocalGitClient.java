@@ -2,6 +2,7 @@ package io.meterian.jenkins.autofixfeature.git;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
+import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.dircache.DirCache;
@@ -10,6 +11,7 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.RemoteConfig;
+import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +31,7 @@ public class LocalGitClient {
 
     private static final String REMOTE_BRANCH_ALREADY_EXISTS_WARNING = "[meterian] Warning: %s already exists in the remote repo, skipping the remote branch creation process.";
     private static final String FIXED_BY_METERIAN = "fixed-by-meterian";
+    private static final String HTTPS_ORIGIN = "https-origin";
 
     private final String meterianGithubUser;  // Machine User name
     private final String meterianGithubEmail; // Email associated with the Machine User
@@ -116,11 +120,13 @@ public class LocalGitClient {
             if (currentBranchWasCreatedByMeterianClient()) {
                 log.info(String.format("Checking if the branch %s to be created already exists in remote repo", currentBranch));
                 git().fetch()
+                        .setRemote(HTTPS_ORIGIN)
                         .setRemoveDeletedRefs(true)
                         .call();
                 if (meterianRemoteBranchDoesNotExists()) {
                     log.info(String.format("Branch %s does not exist in remote repo, started pushing branch", currentBranch));
                     git().push()
+                            .setRemote(HTTPS_ORIGIN)
                             .setCredentialsProvider(credentialsProvider)
                             .call();
                     log.info("Finished pushing branch to remote repo");
@@ -328,10 +334,34 @@ public class LocalGitClient {
             try {
                 this.git = Git.open(new File(pathToRepo));
                 log.info(String.format("Workspace is pointing to branch %s (%s)", getCurrentBranch(), getCurrentBranchSHA()));
+
+                addRemoteForHttpsURI(this.git);
+                enlistRemotes(this.git);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
 
         return git;
+    }
+
+    private void enlistRemotes(Git git) throws GitAPIException {
+        List<RemoteConfig> remoteList = git.remoteList().call();
+        log.info("Remotes: " +
+                remoteList.stream()
+                        .map(remote -> String.format(
+                                "%s: uri: %s: pushUri: %s", remote.getName(), remote.getURIs(), remote.getPushURIs()))
+                        .collect(Collectors.toList()));
+    }
+
+    private void addRemoteForHttpsURI(Git git) throws URISyntaxException, GitAPIException {
+        String repoURI = String.format(
+                "https://github.com/%s.git",
+                getRepositoryName()
+        );
+        RemoteAddCommand remoteAddCommand = git.remoteAdd();
+        remoteAddCommand.setName(HTTPS_ORIGIN);
+        remoteAddCommand.setUri(new URIish(repoURI));
+        RemoteConfig remoteConfig = remoteAddCommand.call();
+        remoteConfig.addPushURI(new URIish(repoURI));
     }
 }

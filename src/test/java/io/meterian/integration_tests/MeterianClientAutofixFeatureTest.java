@@ -166,6 +166,7 @@ public class MeterianClientAutofixFeatureTest {
                         "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
                 }
         );
+        testManagement.deleteRemoteBranch(gitRepoWorkingFolder, fixedByMeterianBranchName);
     }
 
     @Test

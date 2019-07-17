@@ -18,10 +18,10 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
 import org.eclipse.jgit.api.Git;
+import com.jcraft.jsch.Session;
+import org.eclipse.jgit.api.TransportConfigCallback;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.transport.CredentialsProvider;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.transport.*;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import static org.mockito.Mockito.*;
 import org.slf4j.Logger;
@@ -140,6 +140,7 @@ public class TestManagement {
                 "git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName);
         try {
             Git.cloneRepository()
+                    .setTransportConfigCallback(getTransportConfigCallback())
                     .setCredentialsProvider(credentialsProvider)
                     .setURI(repoURI)
                     .setBranch(branch)
@@ -175,6 +176,7 @@ public class TestManagement {
                     .setSource(null)
                     .setDestination("refs/heads/" + branchName);
             git.push()
+                    .setTransportConfigCallback(getTransportConfigCallback())
                     .setCredentialsProvider(credentialsProvider)
                     .setRefSpecs(refSpec)
                     .setRemote("origin")
@@ -186,6 +188,18 @@ public class TestManagement {
                             "maybe the branch does not exist or the name has changed", branchName)
             );
         }
+    }
+
+    private TransportConfigCallback getTransportConfigCallback() {
+        return transport -> {
+            SshTransport sshTransport = ( SshTransport )transport;
+            sshTransport.setSshSessionFactory( new JschConfigSessionFactory() {
+                @Override
+                protected void configure(OpenSshConfig.Host host, Session session) {
+                    session.setPassword(getMeterianGithubToken());
+                }
+            });
+        };
     }
 
     public String getFixedByMeterianBranchName(String repoWorkspace, String branch) throws Exception {

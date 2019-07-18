@@ -136,19 +136,6 @@ public class TestManagement {
                 exitCode, exitCode, is(equalTo(0)));
     }
 
-    public void configureUnsetUrlRewriting() throws IOException {
-        // git config --global --unset url.ssh://git@github.com.insteadof
-        String[] gitConfigUrlRewriting = new String[] {
-                "git",
-                "config",
-                "--global",
-                "--unset",
-                "url.ssh://git@github.com.insteadof"
-        };
-
-        runCommand(gitConfigUrlRewriting, gitRepoWorkingFolder, log);
-    }
-
     public void performCloneGitRepo(String githubProjectName,
                                     String githubOrgOrUserName,
                                     String workingFolder,

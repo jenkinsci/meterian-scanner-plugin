@@ -12,12 +12,14 @@ import static org.mockito.Mockito.mock;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URISyntaxException;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.transport.*;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -44,6 +46,7 @@ public class TestManagement {
 
     private static final String BASE_URL = "https://www.meterian.com";
     private static final String NO_JVM_ARGS = "";
+    private static final String HTTPS_ORIGIN = "https-origin";
 
     private String gitRepoWorkingFolder;
     private Logger log;
@@ -104,7 +107,7 @@ public class TestManagement {
     }
 
     public void configureGitUserNameAndEmail(String userName, String userEmail) throws IOException {
-        // git config --global user.name "Your Name"
+        // git config --local user.name "Your Name"
         String[] gitConfigUserNameCommand = new String[] {
                 "git",
                 "config",
@@ -118,7 +121,7 @@ public class TestManagement {
         assertThat("Cannot run the test, as we were unable configure a user due to error code: " +
                 exitCode, exitCode, is(equalTo(0)));
 
-        // git config --global user.email "you@example.com"
+        // git config --local user.email "you@example.com"
         String[] gitConfigUserEmailCommand = new String[] {
                 "git",
                 "config",
@@ -131,6 +134,19 @@ public class TestManagement {
 
         assertThat("Cannot run the test, as we were unable configure a user userEmail due to error code: " +
                 exitCode, exitCode, is(equalTo(0)));
+    }
+
+    public void configureUnsetUrlRewriting() throws IOException {
+        // git config --global --unset url.ssh://git@github.com.insteadof
+        String[] gitConfigUrlRewriting = new String[] {
+                "git",
+                "config",
+                "--global",
+                "--unset",
+                "url.ssh://git@github.com.insteadof"
+        };
+
+        runCommand(gitConfigUrlRewriting, gitRepoWorkingFolder, log);
     }
 
     public void performCloneGitRepo(String githubProjectName,
@@ -171,19 +187,36 @@ public class TestManagement {
                         .replace("refs/heads/", ""))));
     }
 
-    public void deleteRemoteBranch(String workingFolder, String branchName) {
+    private void addRemoteForHttpsURI(Git git, String githubOrgName, String githubProjectName) throws URISyntaxException, GitAPIException, IOException {
+        String repoURI = String.format(
+                "https://github.com/%s/%s.git",
+                githubOrgName,
+                githubProjectName
+        );
+        RemoteAddCommand remoteAddCommand = git.remoteAdd();
+        remoteAddCommand.setName(HTTPS_ORIGIN);
+        remoteAddCommand.setUri(new URIish(repoURI));
+        RemoteConfig remoteConfig = remoteAddCommand.call();
+        remoteConfig.addPushURI(new URIish(repoURI));
+    }
+
+    public void deleteRemoteBranch(String workingFolder,
+                                   String githubOrgName,
+                                   String githubProjectName,
+                                   String branchName) {
         try {
             Git git = Git.open(new File(workingFolder));
+            addRemoteForHttpsURI(git, githubOrgName, githubProjectName);
             RefSpec refSpec = new RefSpec()
                     .setSource(null)
                     .setDestination("refs/heads/" + branchName);
             git.push()
                     .setCredentialsProvider(credentialsProvider)
                     .setRefSpecs(refSpec)
-                    .setRemote("origin")
+                    .setRemote(HTTPS_ORIGIN)
                     .call();
             log.info(String.format("Successfully removed remote branch %s from the repo", branchName));
-        } catch (IOException | GitAPIException ex) {
+        } catch (IOException | GitAPIException | URISyntaxException ex) {
             log.warn(
                     String.format("We were unable to remove a remote branch %s from the repo, " +
                             "maybe the branch does not exist or the name has changed", branchName)

@@ -73,8 +73,15 @@ public class MeterianClientAutofixFeatureTest {
                 testManagement.getMeterianGithubUser() == null ? "meterian-bot" : testManagement.getMeterianGithubUser(),
                 testManagement.getMeterianGithubEmail() == null ? "bot.github@meterian.io" : testManagement.getMeterianGithubEmail()
         );
+
+        testManagement.configureUnsetUrlRewriting();
+
         fixedByMeterianBranchName = testManagement.getFixedByMeterianBranchName(gitRepoWorkingFolder,"master");
-        testManagement.deleteRemoteBranch(gitRepoWorkingFolder, fixedByMeterianBranchName);
+        testManagement.deleteRemoteBranch(
+                gitRepoWorkingFolder,
+                githubOrgName,
+                githubProjectName,
+                fixedByMeterianBranchName);
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         testManagement.runMeterianClientAndReportAnalysis(configuration, jenkinsLogger);
@@ -171,7 +178,12 @@ public class MeterianClientAutofixFeatureTest {
                         "[meterian] Aborting, not continuing with rest of the local/remote branch or pull request creation process."
                 }
         );
-        testManagement.deleteRemoteBranch(gitRepoWorkingFolder, fixedByMeterianBranchName);
+        testManagement.deleteRemoteBranch(
+                gitRepoWorkingFolder,
+                githubOrgName,
+                githubProjectName,
+                fixedByMeterianBranchName
+        );
     }
 
     @Test
@@ -190,6 +202,8 @@ public class MeterianClientAutofixFeatureTest {
                 testManagement.getMeterianGithubUser() == null ? "meterian-bot" : testManagement.getMeterianGithubUser(),
                 testManagement.getMeterianGithubEmail() == null ? "bot.github@meterian.io" : testManagement.getMeterianGithubEmail()
         );
+
+        testManagement.configureUnsetUrlRewriting();
 
         // When: the meterian client is run against the locally cloned git repo with the autofix feature (--autofix) passed as a CLI arg
         testManagement.runMeterianClientAndReportAnalysis(configuration, jenkinsLogger);

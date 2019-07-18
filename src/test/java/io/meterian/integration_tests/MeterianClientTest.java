@@ -44,8 +44,8 @@ public class MeterianClientTest {
         new File(gitRepoRootFolder).mkdir();
 
         testManagement.performCloneGitRepo(
-                "MeterianHQ",
                 "autofix-sample-maven-upgrade",
+                "MeterianHQ",
                 gitRepoRootFolder,
                 "master");
     }

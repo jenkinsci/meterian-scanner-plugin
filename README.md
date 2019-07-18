@@ -1,4 +1,4 @@
-# jenkins-plugin
+# meterian-scanner-plugin
 
 The official Meterian plugin for Jenkins.
 
@@ -66,6 +66,16 @@ Ensure the above two environment variables are set via https://circleci.com/gh/[
 
 In addition you would also need to add the SSH key associated with the Machine User created above to the CircleCI SSH keychain, see how that is done via https://circleci.com/docs/2.0/gh-bb-integration/#creating-a-machine-user.
 
+#### Known issue
+
+##### _push not permitted_ error message
+
+See post [URL rewriting SO post](https://stackoverflow.com/questions/33835669/jgit-sets-git-uri-instead-of-https-for-remote-on-circleci), can be overcome by inserting the below:
+```bash
+  git config --global --unset url.ssh://git@github.com.insteadof || true
+```
+
+in the `./circleci/config.yml` before the build or test runs to overcome this error message. 
 
 _**Note:** in general the above might not be needed if your CI/CD environment contains the necessary permission to perform `git push` related actions on the target repo you are analysing._
 

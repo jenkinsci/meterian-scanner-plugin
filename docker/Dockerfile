@@ -1,0 +1,15 @@
+FROM maven:latest
+
+WORKDIR /home/
+
+COPY .  /home/
+
+ARG METERIAN_API_TOKEN
+ENV METERIAN_API_TOKEN=${METERIAN_API_TOKEN}
+
+ARG METERIAN_GITHUB_TOKEN
+ENV METERIAN_GITHUB_TOKEN=${METERIAN_GITHUB_TOKEN}
+
+RUN mvn dependency:go-offline
+
+RUN mvn package -DskipTests || true

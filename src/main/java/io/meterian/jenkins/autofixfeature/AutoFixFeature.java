@@ -85,6 +85,7 @@ public class AutoFixFeature {
 
         try {
             if (localGitClient.hasChanges()) {
+                localGitClient.createMeterianBranch();
                 localGitClient.applyCommitsToLocalRepo();
                 targetBranchToWorkOn = localGitClient.getCurrentBranch();
             } else {

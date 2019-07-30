@@ -4,6 +4,8 @@ import io.meterian.test_management.TestManagement;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,12 +13,17 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collection;
 
+@RunWith(Parameterized.class)
 public class LocalGitClientTest {
 
     private static final Logger log = LoggerFactory.getLogger(LocalGitClientTest.class);
 
     private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
+
+    private final String gitProtocol;
     private String githubOrgName = "MeterianHQ";
     private String githubProjectName = "autofix-sample-maven-upgrade";
     private String gitRepoRootFolder = Paths.get(CURRENT_WORKING_DIR, "target/github-repo-protocols/").toString();
@@ -25,8 +32,21 @@ public class LocalGitClientTest {
     private File logFile;
     private PrintStream jenkinsLogger;
 
+    @Parameterized.Parameters(name = "Cloning with git protocol: {0}")
+    public static Collection gitProtocols() {
+        return Arrays.asList(
+                new Object[][] {
+                        {"https"},
+                }
+        );
+    }
+
+    public LocalGitClientTest(String gitProtocol) {
+        this.gitProtocol = gitProtocol;
+    }
+
     @Test
-    public void givenAGitRepoConfiguredWithHttpsProtocol_WhenLocalBranchIsPushToRemoteUsingTheToken_ThenRemoteIsCreated()
+    public void givenAGitRepoConfiguredWithAGitProtocol_WhenLocalBranchIsPushToRemoteUsingTheToken_ThenRemoteIsCreated()
             throws IOException, GitAPIException {
         // Given
         logFile = File.createTempFile("jenkins-logger-", Long.toString(System.nanoTime()));
@@ -41,7 +61,7 @@ public class LocalGitClientTest {
         TestManagement testManagement = new TestManagement(gitRepoWorkingFolder, log, jenkinsLogger);
         testManagement.getConfiguration();
         testManagement.performCloneGitRepo(
-                "https",
+                gitProtocol,
                 githubProjectName,
                 githubOrgName,
                 gitRepoWorkingFolder,

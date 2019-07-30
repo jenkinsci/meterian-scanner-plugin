@@ -38,6 +38,7 @@ public class AutoFixFeature {
         localGitClient = new LocalGitClient(
                 environment.get("WORKSPACE"),
                 configuration.getMeterianGithubUser(),
+                configuration.getMeterianGithubToken(),
                 configuration.getMeterianGithubEmail(),
                 jenkinsLogger);
     }
@@ -84,6 +85,7 @@ public class AutoFixFeature {
 
         try {
             if (localGitClient.hasChanges()) {
+                localGitClient.createMeterianBranch();
                 localGitClient.applyCommitsToLocalRepo();
                 targetBranchToWorkOn = localGitClient.getCurrentBranch();
             } else {
@@ -100,7 +102,7 @@ public class AutoFixFeature {
         try {
             LocalGitHubClient localGitHubClient = new LocalGitHubClient(
                     configuration.getMeterianGithubToken(),
-                    localGitClient.getOrgOrUsername(),
+                    localGitClient.getOrganisationOrUsername(),
                     localGitClient.getRepositoryName(),
                     jenkinsLogger
             );

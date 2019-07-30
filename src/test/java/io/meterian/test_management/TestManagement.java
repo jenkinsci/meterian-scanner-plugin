@@ -1,5 +1,7 @@
 package io.meterian.test_management;
 
+import static io.meterian.jenkins.autofixfeature.git.LocalGitClient.HTTPS_ORIGIN;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -12,12 +14,21 @@ import static org.mockito.Mockito.mock;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import io.meterian.integration_tests.LocalGitClientExtended;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.http.client.HttpClient;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.transport.*;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import static org.mockito.Mockito.*;
 import org.slf4j.Logger;
@@ -29,7 +40,6 @@ import com.meterian.common.system.Shell;
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import io.meterian.jenkins.autofixfeature.AutoFixFeature;
-import io.meterian.jenkins.autofixfeature.git.LocalGitClient;
 import io.meterian.jenkins.core.Meterian;
 import io.meterian.jenkins.glue.MeterianPlugin;
 import io.meterian.jenkins.glue.clientrunners.ClientRunner;
@@ -47,7 +57,8 @@ public class TestManagement {
     private Logger log;
     private PrintStream jenkinsLogger;
     private EnvVars environment;
-    private LocalGitClient gitClient;
+    private LocalGitClientExtended gitClient;
+    private CredentialsProvider credentialsProvider;
 
     public TestManagement(String gitRepoWorkingFolder,
                           Logger log,
@@ -101,7 +112,7 @@ public class TestManagement {
     }
 
     public void configureGitUserNameAndEmail(String userName, String userEmail) throws IOException {
-        // git config --global user.name "Your Name"
+        // git config --local user.name "Your Name"
         String[] gitConfigUserNameCommand = new String[] {
                 "git",
                 "config",
@@ -115,7 +126,7 @@ public class TestManagement {
         assertThat("Cannot run the test, as we were unable configure a user due to error code: " +
                 exitCode, exitCode, is(equalTo(0)));
 
-        // git config --global user.email "you@example.com"
+        // git config --local user.email "you@example.com"
         String[] gitConfigUserEmailCommand = new String[] {
                 "git",
                 "config",
@@ -130,19 +141,55 @@ public class TestManagement {
                 exitCode, exitCode, is(equalTo(0)));
     }
 
-    public void performCloneGitRepo(String githubOrgOrUserName, String githubProjectName, String workingFolder, String branch) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "clone",
-                String.format("git@github.com:%s/%s.git", githubOrgOrUserName, githubProjectName), // only use ssh or git protocol and not https - uses ssh keys to authenticate
-                "-b",
-                branch
-        };
+    public void performCloneGitRepo(String gitProtocol,
+                                    String githubProjectName,
+                                    String githubOrgOrUserName,
+                                    String workingFolder,
+                                    String branch) {
+        String repoURL = buildGitRepoURL(gitProtocol, githubProjectName, githubOrgOrUserName);
+        try {
+            Git.cloneRepository()
+                    .setCredentialsProvider(credentialsProvider)
+                    .setURI(repoURL)
+                    .setBranch(branch)
+                    .setDirectory(new File(workingFolder))
+                    .call();
+        } catch (Exception ex) {
+            fail(String.format("Cannot run the test, as we were unable to clone the target git repo due to an error: %s (cause: %s)",
+                    ex.getMessage(), ex.getCause()));
+        }
+    }
 
-        int exitCode = runCommand(gitCloneRepoCommand, workingFolder, log);
+    private String buildGitRepoURL(String gitProtocol, String githubProjectName, String githubOrgOrUserName) {
+        if (gitProtocol.isEmpty()) {
+            gitProtocol = "https://";
+        }
 
-        assertThat("Cannot run the test, as we were unable to clone the target git repo due to error code: " +
-                exitCode, exitCode, is(equalTo(0)));
+        String repoURIFormatString = "";
+        switch (gitProtocol) {
+            case "https://":
+                repoURIFormatString = "https://github.com/%s/%s.git";
+                break;
+            case "git@":
+                repoURIFormatString = "git@github.com:%s/%s.git";
+                break;
+            case "ssh://":
+                repoURIFormatString = "ssh://git@github.com/%s/%s.git";
+                break;
+            case "git://":
+                repoURIFormatString = "git://github.com/%s/%s.git";
+                break;
+            default:
+                fail(String.format("Cannot run the test, as we were unable to clone the target git repo, " +
+                        "unsupported protocol provided (%s)", gitProtocol));
+                break;
+        }
+
+        return String.format(
+                repoURIFormatString,
+                githubOrgOrUserName,
+                githubProjectName
+        );
     }
 
     public boolean branchExists(String branchName) throws GitAPIException {
@@ -162,27 +209,64 @@ public class TestManagement {
                         .replace("refs/heads/", ""))));
     }
 
-    public void deleteRemoteBranch(String branchName) throws IOException {
-        String[] gitCloneRepoCommand = new String[] {
-                "git",
-                "push",
-                "origin",
-                ":" + branchName
-        };
+    private void addRemoteForHttpsURI(Git git, String githubOrgName, String githubProjectName) throws URISyntaxException, GitAPIException {
+        String repoURI = String.format(
+                "https://github.com/%s/%s.git",
+                githubOrgName,
+                githubProjectName
+        );
+        RemoteAddCommand remoteAddCommand = git.remoteAdd();
+        remoteAddCommand.setName(HTTPS_ORIGIN);
+        remoteAddCommand.setUri(new URIish(repoURI));
+        RemoteConfig remoteConfig = remoteAddCommand.call();
+        remoteConfig.addPushURI(new URIish(repoURI));
+    }
 
-        int exitCode = runCommand(gitCloneRepoCommand, gitRepoWorkingFolder, log);
+    public void deleteRemoteBranch(String workingFolder,
+                                   String githubOrgName,
+                                   String githubProjectName,
+                                   String branchName) {
+        try {
+            Git git = Git.open(new File(workingFolder));
+            addRemoteForHttpsURI(git, githubOrgName, githubProjectName);
+            RefSpec refSpec = new RefSpec()
+                    .setSource(null)
+                    .setDestination("refs/heads/" + branchName);
+            git.push()
+                    .setCredentialsProvider(credentialsProvider)
+                    .setRefSpecs(refSpec)
+                    .setRemote(HTTPS_ORIGIN)
+                    .call();
+            log.info(String.format("Successfully removed remote branch %s from the repo", branchName));
+        } catch (IOException | GitAPIException | URISyntaxException ex) {
+            log.warn(
+                    String.format("We were unable to remove a remote branch %s from the repo, " +
+                            "maybe the branch does not exist or the name has changed", branchName)
+            );
+        }
+    }
 
-        if (exitCode != 0) {
-            jenkinsLogger.println(String.format("We were unable to remove a remote branch %s from the repo, " +
-                            "maybe the branch does not exist or the name has changed", branchName));
+    public void deleteLocalBranch(String workingFolder, String branchName) {
+        try {
+            Git git = Git.open(new File(workingFolder));
+            git.branchDelete()
+                    .setBranchNames(branchName)
+                    .call();
+            log.info(String.format("Successfully removed local branch %s from the repo", branchName));
+        } catch (IOException | GitAPIException ex) {
+            log.warn(
+                    String.format("We were unable to remove a local branch %s from the repo, " +
+                            "maybe the branch does not exist or the name has changed", branchName)
+            );
         }
     }
 
     public String getFixedByMeterianBranchName(String repoWorkspace, String branch) throws Exception {
         try {
-            LocalGitClient gitClient = new LocalGitClient(
+            LocalGitClientExtended gitClient = new LocalGitClientExtended(
                     repoWorkspace,
                     getMeterianGithubUser(),
+                    getMeterianGithubToken(),
                     getMeterianGithubEmail(),
                     jenkinsLogger
             );
@@ -198,11 +282,15 @@ public class TestManagement {
     }
 
     public String getMeterianGithubUser() {
-        return getOSEnvSettings().get("METERIAN_GITHUB_USER");
+        return environment.get("METERIAN_GITHUB_USER");
+    }
+
+    public String getMeterianGithubToken() {
+        return environment.get("METERIAN_GITHUB_TOKEN");
     }
 
     public String getMeterianGithubEmail() {
-        return getOSEnvSettings().get("METERIAN_GITHUB_EMAIL");
+        return environment.get("METERIAN_GITHUB_EMAIL");
     }
 
     public EnvVars getEnvironment() {
@@ -227,6 +315,12 @@ public class TestManagement {
         if ((meterianGithubEmail == null) || meterianGithubEmail.trim().isEmpty()) {
             jenkinsLogger.println("METERIAN_GITHUB_EMAIL has not been set, tests will be run using the default value assumed for this environment variable");
         }
+
+        // See https://www.codeaffine.com/2014/12/09/jgit-authentication/ or
+        // https://github.blog/2012-09-21-easier-builds-and-deployments-using-git-over-https-and-oauth/
+        // for explanation on why this is allowed
+        // First argument of UsernamePasswordCredentialsProvider is the token, the second argument is empty/blank
+        credentialsProvider = new UsernamePasswordCredentialsProvider(meterianGithubToken, "");
 
         MeterianPlugin.Configuration standardConfiguration = new MeterianPlugin.Configuration(
                 BASE_URL,
@@ -312,16 +406,59 @@ public class TestManagement {
             }});
     }
 
-    private LocalGitClient getGitClient() {
+    private LocalGitClientExtended getGitClient() {
         if (gitClient == null) {
-            gitClient = new LocalGitClient(
+            gitClient = new LocalGitClientExtended(
                     gitRepoWorkingFolder,
                     getMeterianGithubUser(),
+                    getMeterianGithubToken(),
                     getMeterianGithubEmail(),
                     jenkinsLogger
             );
         }
 
         return gitClient;
+    }
+
+    public void setEnvironmentVariable(String variable, String value) {
+        if (environment == null) {
+            environment = getEnvironment();
+        }
+        environment.put(variable, value);
+    }
+
+    public void applyCommitsToLocalRepo() throws GitAPIException, IOException {
+        getGitClient().applyCommitsToLocalRepo();
+    }
+
+    public void pushBranchToRemoteRepo() throws GitAPIException {
+        getGitClient().pushBranchToRemoteRepo();
+    }
+
+    public void createBranch(String branchName) throws GitAPIException, IOException {
+        String createdBranch = getGitClient().createBranch(branchName)
+                .getName()
+                .replace("refs/heads/", "");
+        log.info(String.format("%s branch created", createdBranch));
+    }
+
+    public void changeContentOfFile(String filename) throws IOException {
+        String targetDummyFile = Paths.get(gitRepoWorkingFolder, filename).toString();
+        File dummyFile = new File(targetDummyFile);
+        Files.write(dummyFile.toPath(), "Changing the content of the README.md file".getBytes(UTF_8));
+        log.info(String.format("%s file has been modified", filename));
+    }
+
+    public void verifyThatTheRemoteBranchWasCreated(String branchName) throws GitAPIException {
+        List<String> remoteBranches = getGitClient().getRemoteBranches();
+        Optional<String> branchHasBeenFound = remoteBranches
+                .stream()
+                .filter(name -> name.equals(branchName))
+                .findAny();
+
+        assertThat(
+                String.format("Expected branch %s was not found", branchName),
+                branchHasBeenFound.isPresent(), is(true)
+        );
     }
 }

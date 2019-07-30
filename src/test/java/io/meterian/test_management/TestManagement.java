@@ -161,36 +161,35 @@ public class TestManagement {
     }
 
     private String buildGitRepoURL(String gitProtocol, String githubProjectName, String githubOrgOrUserName) {
-        String repoURI = "";
         if (gitProtocol.isEmpty()) {
             gitProtocol = "https://";
         }
 
-        if (gitProtocol.equals("https://")) {
-            repoURI = String.format(
-                    "https://github.com/%s/%s.git",
-                    githubOrgOrUserName,
-                    githubProjectName);
-        } else if (gitProtocol.equals("git@")) {
-            repoURI = String.format(
-                    "git@github.com:%s/%s.git",
-                    githubOrgOrUserName,
-                    githubProjectName);
-        } else if (gitProtocol.equals("ssh://")) {
-            repoURI = String.format(
-                    "ssh://git@github.com/%s/%s.git",
-                    githubOrgOrUserName,
-                    githubProjectName);
-        } else if (gitProtocol.equals("git://")) {
-            repoURI = String.format(
-                    "git://github.com/%s/%s.git",
-                    githubOrgOrUserName,
-                    githubProjectName);
-        } else {
-            fail(String.format("Cannot run the test, as we were unable to clone the target git repo, " +
-                    "unsupported protocol provided (%s)", gitProtocol));
+        String repoURIFormatString = "";
+        switch (gitProtocol) {
+            case "https://":
+                repoURIFormatString = "https://github.com/%s/%s.git";
+                break;
+            case "git@":
+                repoURIFormatString = "git@github.com:%s/%s.git";
+                break;
+            case "ssh://":
+                repoURIFormatString = "ssh://git@github.com/%s/%s.git";
+                break;
+            case "git://":
+                repoURIFormatString = "git://github.com/%s/%s.git";
+                break;
+            default:
+                fail(String.format("Cannot run the test, as we were unable to clone the target git repo, " +
+                        "unsupported protocol provided (%s)", gitProtocol));
+                break;
         }
-        return repoURI;
+
+        return String.format(
+                repoURIFormatString,
+                githubOrgOrUserName,
+                githubProjectName
+        );
     }
 
     public boolean branchExists(String branchName) throws GitAPIException {

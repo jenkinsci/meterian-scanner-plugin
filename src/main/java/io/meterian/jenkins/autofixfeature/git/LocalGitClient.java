@@ -38,6 +38,9 @@ public class LocalGitClient {
     private final String meterianGithubEmail; // Email associated with the Machine User
     private final String pathToRepo;
 
+    private String organisationOrUsername;
+    private String repositoryName;
+
     private PrintStream jenkinsLogger;
 
     private Git git;
@@ -66,17 +69,18 @@ public class LocalGitClient {
         log.info(String.format("Workspace (path to the git repo): %s", pathToRepo));
     }
 
-    public String getRepositoryName() throws GitAPIException {
-        List<RemoteConfig> remoteConfigList = git.remoteList().call();
-        if ((remoteConfigList != null) && (remoteConfigList.size() > 0)) {
-            String rawPath = remoteConfigList.get(0).getURIs().get(0).getRawPath();
-
-            if (rawPath.startsWith("/")) {
-                rawPath = rawPath.substring(1);
-            }
-            return rawPath.replace(".git", "");
+    public String getOrganisationOrUsername() {
+        if ((organisationOrUsername == null) || (organisationOrUsername.isEmpty())) {
+            git();
         }
-        return "";
+        return organisationOrUsername;
+    }
+
+    public String getRepositoryName() {
+        if ((repositoryName == null) || (repositoryName.isEmpty())) {
+            git();
+        }
+        return repositoryName;
     }
 
     public void applyCommitsToLocalRepo() throws GitAPIException, IOException {
@@ -95,15 +99,6 @@ public class LocalGitClient {
 
     private String getMeterianCommitMessage() {
         return String.format("Fixes applied via %s", meterianGithubUser);
-    }
-
-    public String getOrgOrUsername() throws GitAPIException {
-        String[] fullRepoName = getRepositoryName().split("/");
-        if (fullRepoName.length > 0) {
-            return fullRepoName[0].isEmpty() ? fullRepoName[1] : fullRepoName[0];
-        }
-
-        return "";
     }
 
     public Ref checkoutBranch(String branch) throws GitAPIException {
@@ -340,9 +335,9 @@ public class LocalGitClient {
             try {
                 this.git = Git.open(new File(pathToRepo));
                 log.info(String.format("Workspace is pointing to branch %s (%s)", getCurrentBranch(), getCurrentBranchSHA()));
-
-                addRemoteForHttpsURI(this.git);
-                enlistRemotes(this.git);
+                parseRepoURL();
+                addRemoteForHttpsURI();
+                enlistRemotes();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
@@ -350,7 +345,31 @@ public class LocalGitClient {
         return git;
     }
 
-    private void enlistRemotes(Git git) throws GitAPIException {
+    private void parseRepoURL() throws GitAPIException {
+        List<RemoteConfig> remoteConfigList = git.remoteList().call();
+        if ((remoteConfigList != null) && (remoteConfigList.size() > 0)) {
+            RemoteConfig remoteOrigin = remoteConfigList
+                    .stream()
+                    .filter(remote -> remote.getName().equalsIgnoreCase("origin"))
+                    .findAny()
+                    .get();
+            String rawRepoURI = remoteOrigin
+                    .getURIs()
+                    .get(0)
+                    .getRawPath();
+
+            if (rawRepoURI.startsWith("/")) {
+                rawRepoURI = rawRepoURI.substring(1);
+            }
+            rawRepoURI = rawRepoURI.replace(".git", "");
+
+            String[] splitRawRepoURI = rawRepoURI.split("/");
+            organisationOrUsername = splitRawRepoURI[0];
+            repositoryName = splitRawRepoURI[1];
+        }
+    }
+
+    private void enlistRemotes() throws GitAPIException {
         List<RemoteConfig> remoteList = git.remoteList().call();
         log.info("Remotes: " +
                 remoteList.stream()
@@ -359,9 +378,10 @@ public class LocalGitClient {
                         .collect(Collectors.toList()));
     }
 
-    private void addRemoteForHttpsURI(Git git) throws URISyntaxException, GitAPIException {
+    private void addRemoteForHttpsURI() throws URISyntaxException, GitAPIException {
         String repoURI = String.format(
-                "https://github.com/%s.git",
+                "https://github.com/%s/%s.git",
+                getOrganisationOrUsername(),
                 getRepositoryName()
         );
         RemoteAddCommand remoteAddCommand = git.remoteAdd();

@@ -102,7 +102,7 @@ public class AutoFixFeature {
         try {
             LocalGitHubClient localGitHubClient = new LocalGitHubClient(
                     configuration.getMeterianGithubToken(),
-                    localGitClient.getOrgOrUsername(),
+                    localGitClient.getOrganisationOrUsername(),
                     localGitClient.getRepositoryName(),
                     jenkinsLogger
             );

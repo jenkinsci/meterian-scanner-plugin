@@ -176,6 +176,11 @@ public class TestManagement {
                     "git@github.com:%s/%s.git",
                     githubOrgOrUserName,
                     githubProjectName);
+        } else if (gitProtocol.equals("ssh")) {
+            repoURI = String.format(
+                    "ssh://git@github.com/%s/%s.git",
+                    githubOrgOrUserName,
+                    githubProjectName);
         } else {
             fail(String.format("Cannot run the test, as we were unable to clone the target git repo, " +
                     "unsupported protocol provided (%s)", gitProtocol));

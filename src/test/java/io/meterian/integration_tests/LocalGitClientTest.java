@@ -39,6 +39,7 @@ public class LocalGitClientTest {
                 new Object[][] {
                         {"https"},
                         {"git@"},
+                        {"ssh"},
                 }
         );
     }

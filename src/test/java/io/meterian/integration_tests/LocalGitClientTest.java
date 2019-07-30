@@ -37,9 +37,10 @@ public class LocalGitClientTest {
         // Git protocols: https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
         return Arrays.asList(
                 new Object[][] {
-                        {"https"},
+                        {"https://"},
                         {"git@"},
-                        {"ssh"},
+                        {"ssh://"},
+                        {"git://"}
                 }
         );
     }

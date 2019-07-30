@@ -163,10 +163,10 @@ public class TestManagement {
     private String buildGitRepoURL(String gitProtocol, String githubProjectName, String githubOrgOrUserName) {
         String repoURI = "";
         if (gitProtocol.isEmpty()) {
-            gitProtocol = "https";
+            gitProtocol = "https://";
         }
 
-        if (gitProtocol.equals("https")) {
+        if (gitProtocol.equals("https://")) {
             repoURI = String.format(
                     "https://github.com/%s/%s.git",
                     githubOrgOrUserName,
@@ -176,9 +176,14 @@ public class TestManagement {
                     "git@github.com:%s/%s.git",
                     githubOrgOrUserName,
                     githubProjectName);
-        } else if (gitProtocol.equals("ssh")) {
+        } else if (gitProtocol.equals("ssh://")) {
             repoURI = String.format(
                     "ssh://git@github.com/%s/%s.git",
+                    githubOrgOrUserName,
+                    githubProjectName);
+        } else if (gitProtocol.equals("git://")) {
+            repoURI = String.format(
+                    "git://github.com/%s/%s.git",
                     githubOrgOrUserName,
                     githubProjectName);
         } else {

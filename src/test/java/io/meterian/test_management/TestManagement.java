@@ -171,8 +171,14 @@ public class TestManagement {
                     "https://github.com/%s/%s.git",
                     githubOrgOrUserName,
                     githubProjectName);
+        } else if (gitProtocol.equals("git@")) {
+            repoURI = String.format(
+                    "git@github.com:%s/%s.git",
+                    githubOrgOrUserName,
+                    githubProjectName);
         } else {
-            fail("Cannot run the test, as we were unable to clone the target git repo, incompatible git protocol provided");
+            fail(String.format("Cannot run the test, as we were unable to clone the target git repo, " +
+                    "unsupported protocol provided (%s)", gitProtocol));
         }
         return repoURI;
     }

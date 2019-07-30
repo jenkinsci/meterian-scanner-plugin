@@ -34,9 +34,11 @@ public class LocalGitClientTest {
 
     @Parameterized.Parameters(name = "Cloning with git protocol: {0}")
     public static Collection gitProtocols() {
+        // Git protocols: https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
         return Arrays.asList(
                 new Object[][] {
                         {"https"},
+                        {"git@"},
                 }
         );
     }

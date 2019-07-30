@@ -359,7 +359,7 @@ public class LocalGitClient {
                         .collect(Collectors.toList()));
     }
 
-    private void addRemoteForHttpsURI(Git git) throws URISyntaxException, GitAPIException, IOException {
+    private void addRemoteForHttpsURI(Git git) throws URISyntaxException, GitAPIException {
         String repoURI = String.format(
                 "https://github.com/%s.git",
                 getRepositoryName()

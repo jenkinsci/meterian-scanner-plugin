@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import static org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE;
 
 public class LocalGitClientExtended extends LocalGitClient {
-    private static final String REFS_REMOTES = String.format("refs/remotes/%s/", HTTPS_ORIGIN);
+    private static final String REFS_REMOTE = "refs/remotes/origin/";
     private final PrintStream jenkinsLogger;
 
     public LocalGitClientExtended(String pathToRepo,
@@ -42,7 +42,6 @@ public class LocalGitClientExtended extends LocalGitClient {
 
     public List<String> getRemoteBranches() throws GitAPIException {
         git().fetch()
-                .setRemote(HTTPS_ORIGIN)
                 .setRemoveDeletedRefs(true)
                 .call();
         List<Ref> remoteList = git()
@@ -51,7 +50,7 @@ public class LocalGitClientExtended extends LocalGitClient {
                 .call();
         List<String> remoteBranches = remoteList
                 .stream()
-                .filter(ref -> ref.getName().contains(REFS_REMOTES))
+                .filter(ref -> ref.getName().contains(REFS_REMOTE))
                 .map(Ref::getName)
                 .map(this::stripOffRefsPrefix)
                 .collect(Collectors.toList());
@@ -62,6 +61,6 @@ public class LocalGitClientExtended extends LocalGitClient {
     }
 
     private String stripOffRefsPrefix(String value) {
-        return value.replace(REFS_REMOTES, "");
+        return value.replace(REFS_REMOTE, "");
     }
 }

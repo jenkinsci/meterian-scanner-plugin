@@ -62,11 +62,11 @@ public class MeterianClientAutofixFeatureTest {
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
         testManagement.performCloneGitRepo(
+                "https",
                 githubProjectName,
                 githubOrgName,
                 gitRepoWorkingFolder,
-                "master"
-        );
+                "master");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         testManagement.configureGitUserNameAndEmail(
@@ -190,10 +190,10 @@ public class MeterianClientAutofixFeatureTest {
         FileUtils.deleteDirectory(new File(gitRepoRootFolder));
         new File(gitRepoRootFolder).mkdir();
         testManagement.performCloneGitRepo(
+                "https",
                 githubProjectName,
                 githubOrgName,
-                gitRepoWorkingFolder,
-                "partially-fixed-by-autofix");
+                gitRepoWorkingFolder, "partially-fixed-by-autofix");
 
         // Deleting remote branch automatically closes any Pull Request attached to it
         testManagement.configureGitUserNameAndEmail(

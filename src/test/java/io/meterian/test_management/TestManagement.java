@@ -141,18 +141,16 @@ public class TestManagement {
                 exitCode, exitCode, is(equalTo(0)));
     }
 
-    public void performCloneGitRepo(String githubProjectName,
+    public void performCloneGitRepo(String gitProtocol,
+                                    String githubProjectName,
                                     String githubOrgOrUserName,
                                     String workingFolder,
                                     String branch) {
-        String repoURI = String.format(
-                "https://github.com/%s/%s.git",
-                githubOrgOrUserName,
-                githubProjectName);
+        String repoURL = buildGitRepoURL(gitProtocol, githubProjectName, githubOrgOrUserName);
         try {
             Git.cloneRepository()
                     .setCredentialsProvider(credentialsProvider)
-                    .setURI(repoURI)
+                    .setURI(repoURL)
                     .setBranch(branch)
                     .setDirectory(new File(workingFolder))
                     .call();
@@ -160,6 +158,23 @@ public class TestManagement {
             fail(String.format("Cannot run the test, as we were unable to clone the target git repo due to an error: %s (cause: %s)",
                     ex.getMessage(), ex.getCause()));
         }
+    }
+
+    private String buildGitRepoURL(String gitProtocol, String githubProjectName, String githubOrgOrUserName) {
+        String repoURI = "";
+        if (gitProtocol.isEmpty()) {
+            gitProtocol = "https";
+        }
+
+        if (gitProtocol.equals("https")) {
+            repoURI = String.format(
+                    "https://github.com/%s/%s.git",
+                    githubOrgOrUserName,
+                    githubProjectName);
+        } else {
+            fail("Cannot run the test, as we were unable to clone the target git repo, incompatible git protocol provided");
+        }
+        return repoURI;
     }
 
     public boolean branchExists(String branchName) throws GitAPIException {

@@ -41,6 +41,7 @@ public class LocalGitClientTest {
         TestManagement testManagement = new TestManagement(gitRepoWorkingFolder, log, jenkinsLogger);
         testManagement.getConfiguration();
         testManagement.performCloneGitRepo(
+                "https",
                 githubProjectName,
                 githubOrgName,
                 gitRepoWorkingFolder,

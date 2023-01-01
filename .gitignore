@@ -36,4 +36,4 @@ work*/
 .idea/
 *.iml
 meterian-plugin.iml
-.DS_Store
+.DS_Store.git/
